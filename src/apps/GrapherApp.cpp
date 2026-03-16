@@ -427,13 +427,27 @@ void GrapherApp::fastDrawLine(uint16_t* buf, int bufW, int bufH,
     int sx = (x0 < x1) ? 1 : -1;
     int sy = (y0 < y1) ? 1 : -1;
     int err = dx + dy;
-    for (;;) {
-        if ((unsigned)x0 < (unsigned)bufW && (unsigned)y0 < (unsigned)bufH)
+
+    // Fast path: both endpoints are inside — skip per-pixel bounds check
+    if ((unsigned)x0 < (unsigned)bufW && (unsigned)x1 < (unsigned)bufW &&
+        (unsigned)y0 < (unsigned)bufH && (unsigned)y1 < (unsigned)bufH) {
+        for (;;) {
             buf[y0 * bufW + x0] = color;
-        if (x0 == x1 && y0 == y1) break;
-        int e2 = err * 2;
-        if (e2 >= dy) { err += dy; x0 += sx; }
-        if (e2 <= dx) { err += dx; y0 += sy; }
+            if (x0 == x1 && y0 == y1) break;
+            int e2 = err * 2;
+            if (e2 >= dy) { err += dy; x0 += sx; }
+            if (e2 <= dx) { err += dx; y0 += sy; }
+        }
+    } else {
+        // Clipping path: check each pixel before writing
+        for (;;) {
+            if ((unsigned)x0 < (unsigned)bufW && (unsigned)y0 < (unsigned)bufH)
+                buf[y0 * bufW + x0] = color;
+            if (x0 == x1 && y0 == y1) break;
+            int e2 = err * 2;
+            if (e2 >= dy) { err += dy; x0 += sx; }
+            if (e2 <= dx) { err += dx; y0 += sy; }
+        }
     }
 }
 
@@ -1656,11 +1670,11 @@ void GrapherApp::replot() {
     int areaW = GRAPH_CANVAS_W;
     int areaH = lv_obj_get_height(_graphArea);
     if (areaH < 2 || !_graphBuf) return;  // Layout not yet computed or buffer missing
+    uint16_t* buf = _graphBuf;
 
     // ── 1. Clear canvas to white ──────────────────────────────────────────
-    const int totalPx = areaW * areaH;
-    uint16_t* buf = _graphBuf;
-    for (int i = 0; i < totalPx; ++i) buf[i] = 0xFFFF;
+    // 0xFF in every byte gives 0xFFFF (white) in every RGB565 pixel
+    memset(buf, 0xFF, (size_t)areaW * areaH * sizeof(uint16_t));
 
     float xRange = _xMax - _xMin;
     float yRange = _yMax - _yMin;
@@ -2416,7 +2430,7 @@ void GrapherApp::handleGraphNav(const KeyEvent& ev) {
         break;
     }
     if (_plotDirty) replot();
-    lv_refr_now(NULL);  // Bypass LVGL timer — force immediate tear-free update
+    lv_refr_now(NULL);  // Force synchronous screen update — bypasses LVGL timer delay
 }
 
 // ── Graph trace keys ────────────────────────────────────────────────────
@@ -2490,7 +2504,7 @@ void GrapherApp::handleGraphTrace(const KeyEvent& ev) {
     }
     drawTraceCursor();
     updateInfoBar();
-    lv_refr_now(NULL);  // Bypass LVGL timer — force immediate tear-free update
+    lv_refr_now(NULL);  // Force synchronous screen update — bypasses LVGL timer delay
 }
 
 // ── Table keys ──────────────────────────────────────────────────────────
