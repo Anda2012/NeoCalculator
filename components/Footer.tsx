@@ -10,7 +10,7 @@ export default function Footer() {
           Fork the Project
         </a>
         <a href="mailto:el.enderj2020@gmail.com" className="border border-white/20 bg-black/50 backdrop-blur-md text-white font-bold py-4 px-8 md:px-10 rounded-lg hover:border-white/60 hover:bg-white/10 transition-all duration-300 flex items-center justify-center uppercase tracking-[0.15em] text-xs md:text-sm shadow-[0_0_20px_rgba(0,0,0,0.5)]">
-          Investment Inquiry
+          Investment Inquiries
         </a>
       </div>
       <div className="mt-20 text-xs font-mono text-gray-600 tracking-widest uppercase">

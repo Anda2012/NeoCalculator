@@ -54,25 +54,25 @@ export default function BentoGrid() {
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 auto-rows-[300px]">
           <BentoCard 
-            title="SRAM Limits Destroyed" 
+            title="Pro-CAS Engine" 
             description="Our Pro-CAS engine fits entirely within 97KB SRAM, utilizing optimized DAG expressions for complex symbolic algebra without ever dropping performance."
             highlight="97KB RAM"
             colSpan="md:col-span-1"
           />
           <BentoCard 
-            title="Radical Affordability" 
-            description="Achieving a 70% BoM reduction without sacrificing computation speed. The NeoCalculator leverages bare-metal C++17 over expensive Cortex-A processors."
-            highlight="$15 BoM"
+            title="Open Source (OSHWA)" 
+            description="Hardware and software that belongs to everyone. OSHWA certified, providing complete transparency and the ability to customize or repair every single component."
+            highlight="100% OPEN"
             colSpan="md:col-span-2"
           />
           <BentoCard 
-            title="NumOS Architecture" 
-            description="A deeply integrated custom OS designed specifically for the ESP32-S3. By bypassing standard overhead, we give raw computational power directly to the hardware interrupts."
+            title="ESP32-S3 Power" 
+            description="A deeply integrated custom OS designed specifically for the dual-core ESP32-S3. By bypassing standard overhead, we give raw computational power directly to the math engine."
             colSpan="md:col-span-2"
           />
           <BentoCard 
             title="Fluid Interface" 
-            description="Interacting with high-level mathematics shouldn't feel laggy. We maintain a strict and completely smooth UI powered by hardware SPI and LVGL."
+            description="Interacting with mathematics shouldn't feel laggy. We maintain a strict and completely smooth 60 FPS UI powered by hardware SPI and LVGL."
             highlight="60 FPS"
             colSpan="md:col-span-1"
           />

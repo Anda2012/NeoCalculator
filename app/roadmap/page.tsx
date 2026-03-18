@@ -90,9 +90,9 @@ export default async function RoadmapPage() {
         {milestones.map((m, i) => (
           <div key={i} className="relative group">
             <div className={`absolute -left-[33px] top-4 w-4 h-4 rounded-full border-2 bg-[#0a0a0a] transition-colors
-              ${m.status === 'done' ? 'border-[#ccff00] bg-[#ccff00]' : 
+              ${m.status === 'done' ? 'border-[#ccff00] bg-[#ccff00] shadow-[0_0_15px_#ccff00]' : 
                 m.status === 'current' ? 'border-[#00D1FF] shadow-[0_0_15px_#00D1FF]' : 
-                'border-gray-600'}`}
+                'border-gray-600 shadow-none'}`}
             ></div>
             
             <div className={`p-6 rounded-2xl border transition-all duration-300

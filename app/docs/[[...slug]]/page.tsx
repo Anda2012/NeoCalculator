@@ -1,7 +1,5 @@
 import { getDocBySlug, getDocsSlugs, getAllDocs } from '@/lib/mdx';
-import { MDXRemote } from 'next-mdx-remote/rsc';
-import rehypeHighlight from 'rehype-highlight';
-import 'highlight.js/styles/atom-one-dark.css';
+import DocReader from '@/components/DocReader';
 import Link from 'next/link';
 
 export async function generateStaticParams() {
@@ -47,26 +45,13 @@ export default async function DocsPage({ params }: { params: { slug?: string[] }
       </aside>
 
       {/* CONTENT */}
-      <article className="flex-grow pt-24 prose prose-invert prose-lg max-w-none 
-        prose-headings:font-sans prose-headings:font-bold prose-headings:tracking-tight 
-        prose-h1:text-5xl prose-h1:text-white prose-h2:text-3xl prose-h2:text-[#ccff00] prose-h2:border-b prose-h2:border-white/10 prose-h2:pb-2 
-        prose-a:text-[#00D1FF] prose-a:no-underline hover:prose-a:underline 
-        prose-pre:bg-[#0a0a0a] prose-pre:border prose-pre:border-white/10 prose-pre:rounded-xl 
-        prose-code:text-[#ccff00] prose-code:font-mono prose-code:bg-white/5 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded">
-        
+      <div className="flex-grow pt-24">
         <p className="text-gray-500 font-mono text-sm mb-8 -mt-4 border-b border-white/10 pb-4">
           Last Updated: {doc.meta.date || 'Unknown'} | Topic: {doc.meta.category || 'General'}
         </p>
 
-        <MDXRemote 
-          source={doc.content} 
-          options={{
-            mdxOptions: {
-              rehypePlugins: [rehypeHighlight as any],
-            }
-          }} 
-        />
-      </article>
+        <DocReader content={doc.content} />
+      </div>
     </main>
   );
 }

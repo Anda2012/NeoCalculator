@@ -1,6 +1,7 @@
 import HeroCanvas from '@/components/HeroCanvas';
 import BentoGrid from '@/components/BentoGrid';
 import HardwareScroll from '@/components/HardwareScroll';
+import Pricing from '@/components/Pricing';
 
 export default function Home() {
   return (
@@ -19,6 +20,10 @@ export default function Home() {
 
       <div className="relative z-30">
         <BentoGrid />
+      </div>
+
+      <div className="relative z-40 border-t border-white/5 pt-10">
+        <Pricing />
       </div>
       
       {/* INVESTOR FOOTER */}

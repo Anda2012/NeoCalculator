@@ -139,10 +139,7 @@ private:
     EquationSolver _equationSolver;
     StepLogger _stepLogger;
 
-    // Graphing (shared or deprecated? GrapherApp handles its own)
-    GraphView _graphView;
-
-    // Shared state
+    // Shared state (GraphView moved into GrapherApp as part of MVC refactor)
     bool _shiftActive;
     bool _alphaActive;
     AngleMode _angleMode;

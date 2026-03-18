@@ -22,7 +22,7 @@
 #include "../input/KeyCodes.h"
 #include "../input/KeyboardManager.h"
 #include "GraphModel.h"
-#include "GraphView.h"
+#include "../ui/GraphView.h"
 
 class GrapherApp {
 public:
@@ -288,6 +288,13 @@ private:
 
     // ── Math ─────────────────────────────────────────────────────────
     float evalAt(int funcIdx, float x);
+
+    // ── Adaptive sampling (streaming directly to GraphView buffer) ────
+    void sampleFuncAdaptive(int fi, uint32_t color);
+    void adaptSegStream(GrapherApp* app, int fi,
+                        float wx0, float wy0,
+                        float wx1, float wy1,
+                        int depth, uint32_t color);
 
     // ── Key dispatchers ──────────────────────────────────────────────
     void handleTabBar(const KeyEvent& ev);

@@ -54,7 +54,6 @@ SystemApp::SystemApp(DisplayDriver &display, Keyboard &keypad)
       _vars(),
       _equationSolver(),
       _stepLogger(),
-      _graphView(display),
       _shiftActive(false),
       _alphaActive(false),
       _angleMode(AngleMode::DEG),
@@ -76,7 +75,7 @@ void SystemApp::begin() {
     _vars.begin();
     _evaluator.setAngleMode(_angleMode);
     _equationSolver.setAngleMode(_angleMode);
-    _graphView.setAngleMode(_angleMode);
+    // Note: GraphView is now owned by GrapherApp as part of MVC refactor
 
     // ── Instantiate all apps (lazy-init: begin() deferred to first load()) ──
     // IMPORTANT: Do NOT call ->begin() here. Each app's load() checks

@@ -89,12 +89,12 @@ export default function HeroCanvas() {
         <div className="inline-block border border-white/20 text-white/80 text-xs font-mono px-4 py-2 rounded-full mb-8 uppercase tracking-[0.2em] backdrop-blur-md bg-white/5">
           NeoCalculator &times; NumOS
         </div>
-        <h1 className="text-6xl md:text-8xl lg:text-[7rem] font-black tracking-tighter mb-4 text-glow-lime drop-shadow-2xl leading-[0.9]">
-          NUMOS<br/>
-          <span className="text-white">REDEFINED</span>
+        <h1 className="text-5xl md:text-7xl lg:text-[6rem] font-black tracking-tighter mb-4 text-glow-lime drop-shadow-2xl leading-[1.1]">
+          THE NEXT GENERATION<br/>
+          <span className="text-white">OF CALCULATORS</span>
         </h1>
         <p className="font-mono text-gray-400 max-w-2xl mx-auto text-lg md:text-xl mt-6 px-4">
-          A <span className="text-white">$15</span> open-source scientific handheld disrupting a <span className="text-white">$150</span> monopoly.
+          Shattering the <span className="text-white">$150</span> monopoly with a <span className="text-white">$15</span> open-source powerhouse.
         </p>
 
         <div className="mt-12 flex flex-col sm:flex-row gap-4 justify-center items-center w-full px-4">

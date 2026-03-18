@@ -42,6 +42,14 @@ struct CartesianFunction {
 };
 
 /**
+ * Point of Interest: root, extremum, or intersection.
+ */
+struct PointOfInterest {
+    float x, y;
+    char  label[24];  // "Root", "Min", "Intersection", etc.
+};
+
+/**
  * GraphModel — mathematical state and evaluation engine.
  *
  * Owns the Tokenizer/Parser/Evaluator/VariableContext required to compile
@@ -67,6 +75,24 @@ public:
      */
     float evalAt(CartesianFunction& fn, float x);
 
+    /**
+     * Find intersection points of two functions in the given range.
+     * Uses bisection to refine roots of (f1(x) - f2(x)) = 0.
+     *
+     * @param fn1, fn2: The two functions to intersect
+     * @param xMin, xMax: Search range
+     * @param maxPoints: Max number of intersections to find
+     * @param maxIterations: Bisection refinement iterations
+     * @return Vector of intersection points
+     */
+    std::vector<PointOfInterest> findIntersections(
+        CartesianFunction& fn1,
+        CartesianFunction& fn2,
+        float xMin, float xMax,
+        int maxPoints = 10,
+        int maxIterations = 50
+    );
+
 private:
     Tokenizer      _tok;
     Parser         _par;
@@ -75,6 +101,13 @@ private:
 
     /// Return pointer to the RHS of expr (after '='), or nullptr.
     static const char* getExprRHS(const char* expr);
+
+    /// Compute f1(x) - f2(x)
+    float diffAt(CartesianFunction& fn1, CartesianFunction& fn2, float x);
+
+    /// Bisection root finder: find x in [a, b] such that f(x) ≈ 0
+    float bisect(CartesianFunction& fn1, CartesianFunction& fn2,
+                 float a, float b, int maxIter);
 };
 
 } // namespace grapher

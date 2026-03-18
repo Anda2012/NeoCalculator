@@ -46,6 +46,45 @@ struct TemplateEntry {
     const char* text;     // Expression to insert
     const char* display;  // Display label
 };
+
+// ── Kandinsky legacy (to be migrated to GraphView) ──────────────────────
+struct PlotPt { int x, y; };  // Screen coordinate point
+static constexpr int INIT_SAMPLE_N = 40;  // Initial samples
+static constexpr int ADAPT_DEPTH = 3;     // Adaptive refinement depth
+
+// Legacy function stubs — Phase 5 will move these to GraphView
+static uint16_t rgb888to565(uint32_t rgb) {
+    uint8_t r = (rgb >> 16) & 0xFF;
+    uint8_t g = (rgb >>  8) & 0xFF;
+    uint8_t b =  rgb        & 0xFF;
+    return (uint16_t)(((r >> 3) << 11) | ((g >> 2) << 5) | (b >> 3));
+}
+
+static void fastDrawLine(uint16_t* buf, int bufW, int bufH,
+                         int x0, int y0, int x1, int y1, uint16_t color) {
+    // Trivial Bresenham — will be moved to GraphView this phase
+    if (!buf || bufW <= 0 || bufH <= 0) return;
+    
+    // Early exit: both points outside the same edge
+    if ((x0 < 0 && x1 < 0) || (x0 >= bufW && x1 >= bufW) ||
+        (y0 < 0 && y1 < 0) || (y0 >= bufH && y1 >= bufH)) return;
+
+    int dx =  std::abs(x1 - x0);
+    int dy = -std::abs(y1 - y0);
+    int sx = (x0 < x1) ? 1 : -1;
+    int sy = (y0 < y1) ? 1 : -1;
+    int err = dx + dy;
+
+    for (;;) {
+        if ((unsigned)x0 < (unsigned)bufW && (unsigned)y0 < (unsigned)bufH)
+            buf[y0 * bufW + x0] = color;
+        if (x0 == x1 && y0 == y1) break;
+        int e2 = err * 2;
+        if (e2 >= dy) { err += dy; x0 += sx; }
+        if (e2 <= dx) { err += dx; y0 += sy; }
+    }
+}
+
 static const TemplateEntry TEMPLATES[] = {
     { "y=2*x+3",   "y = 2x + 3  (Linear)"     },
     { "y=x^2-4",   "y = x\xB2 - 4  (Parabola)" },
@@ -407,52 +446,6 @@ static float niceStep(float range, int maxTicks) {
     return nice * mag;
 }
 
-// ── Kandinsky: RGB888 → RGB565 ────────────────────────────────────────────
-uint16_t GrapherApp::rgb888to565(uint32_t rgb) {
-    uint8_t r = (rgb >> 16) & 0xFF;
-    uint8_t g = (rgb >>  8) & 0xFF;
-    uint8_t b =  rgb        & 0xFF;
-    return (uint16_t)(((r >> 3) << 11) | ((g >> 2) << 5) | (b >> 3));
-}
-
-// ── Kandinsky: Bresenham line into RGB565 buffer ──────────────────────────
-// Trivial-rejection clipping: if both endpoints are outside the same screen
-// edge, the line is fully off-screen and can be skipped immediately.
-void GrapherApp::fastDrawLine(uint16_t* buf, int bufW, int bufH,
-                               int x0, int y0, int x1, int y1, uint16_t color)
-{
-    // Early exit: both points outside the same edge
-    if ((x0 < 0 && x1 < 0) || (x0 >= bufW && x1 >= bufW) ||
-        (y0 < 0 && y1 < 0) || (y0 >= bufH && y1 >= bufH)) return;
-
-    int dx =  abs(x1 - x0);
-    int dy = -abs(y1 - y0);
-    int sx = (x0 < x1) ? 1 : -1;
-    int sy = (y0 < y1) ? 1 : -1;
-    int err = dx + dy;
-
-    // Fast path: both endpoints are inside — skip per-pixel bounds check
-    if ((unsigned)x0 < (unsigned)bufW && (unsigned)x1 < (unsigned)bufW &&
-        (unsigned)y0 < (unsigned)bufH && (unsigned)y1 < (unsigned)bufH) {
-        for (;;) {
-            buf[y0 * bufW + x0] = color;
-            if (x0 == x1 && y0 == y1) break;
-            int e2 = err * 2;
-            if (e2 >= dy) { err += dy; x0 += sx; }
-            if (e2 <= dx) { err += dx; y0 += sy; }
-        }
-    } else {
-        // Clipping path: check each pixel before writing
-        for (;;) {
-            if ((unsigned)x0 < (unsigned)bufW && (unsigned)y0 < (unsigned)bufH)
-                buf[y0 * bufW + x0] = color;
-            if (x0 == x1 && y0 == y1) break;
-            int e2 = err * 2;
-            if (e2 >= dy) { err += dy; x0 += sx; }
-            if (e2 <= dx) { err += dx; y0 += sy; }
-        }
-    }
-}
 
 // ── Graph tick-label draw callback (DRAW_MAIN_END on _graphCanvas) ────────
 // Grid lines and axes are rasterized directly into _graphBuf in replot();
@@ -554,6 +547,8 @@ void GrapherApp::createGraphPanel() {
         Serial.printf("[GRAPHER] Kandinsky buffer %u bytes in PSRAM, free=%u\n",
                       (unsigned)bufSz,
                       (unsigned)heap_caps_get_free_size(MALLOC_CAP_SPIRAM));
+        // Initialize GraphView with the buffer
+        new (&_view) grapher::GraphView(_graphBuf, GRAPH_CANVAS_W, GRAPH_CANVAS_H);
     } else {
         Serial.printf("[GRAPHER] FAIL: Kandinsky PSRAM alloc %u bytes\n", (unsigned)bufSz);
     }
@@ -1536,89 +1531,71 @@ static const char* getExprRHS(const char* text) {
 // Only the RHS (after the first '=') is compiled for evaluation.
 void GrapherApp::preCacheFuncRPN(int idx) {
     if (idx < 0 || idx >= _numFuncs) return;
-    _rpnCacheValid[idx] = false;
-    _cachedRPN[idx].clear();
     _funcs[idx].valid = false;
 
     if (_funcs[idx].len <= 0) return;
 
-    // Strict: require '=' in the expression (no implicit y=f(x))
-    const char* rhs = getExprRHS(_funcs[idx].text);
-    if (!rhs) return;  // No '=' or empty RHS → invalid
-
-    TokenizeResult tr = _tokenizer.tokenize(rhs);
-    if (!tr.ok) return;
-    ParseResult pr = _parser.toRPN(tr.tokens);
-    if (!pr.ok) return;
-    _cachedRPN[idx] = pr.outputRPN;
-    _rpnCacheValid[idx] = true;
-    _funcs[idx].valid = true;
+    // Delegate to GraphModel to compile and cache the RPN
+    _model.preCacheRPN(_funcs[idx]);
 }
 
 float GrapherApp::evalAt(int idx, float x) {
     if (idx < 0 || idx >= _numFuncs || !_funcs[idx].valid) return NAN;
-    // Use cached RPN if available; otherwise fall back to full parse
-    if (_rpnCacheValid[idx] && !_cachedRPN[idx].empty()) {
-        _vars.setVar('x', (double)x);
-        EvalResult er = _evaluator.evaluateRPN(_cachedRPN[idx], _vars);
-        return er.ok ? (float)er.value : NAN;
-    }
-    // Fallback: tokenize + parse RHS only (happens before first cache)
-    const char* rhs = getExprRHS(_funcs[idx].text);
-    if (!rhs) return NAN;
-    _vars.setVar('x', (double)x);
-    TokenizeResult tr = _tokenizer.tokenize(rhs);
-    if (!tr.ok) return NAN;
-    ParseResult pr = _parser.toRPN(tr.tokens);
-    if (!pr.ok) return NAN;
-    EvalResult er = _evaluator.evaluateRPN(pr.outputRPN, _vars);
-    return er.ok ? (float)er.value : NAN;
+    // Delegate to GraphModel for evaluation
+    return _model.evalAt(_funcs[idx], x);
 }
 
-// ── Adaptive sampling helpers ────────────────────────────────────────────
+// ── Adaptive sampling helpers (Phase B: Kandinsky streaming) ──────────────
 
-// Recursively subdivide segment (wx0,sy0)→(wx1,sy1) if it deviates > 2px.
-// Inserts intermediate points into pts[] BEFORE the endpoint wx1.
+// Recursively subdivide segment and stream directly to GraphView buffer.
+// Instead of storing points in an array, this draws segments in real-time.
 // Max recursion depth is ADAPT_DEPTH (3) — safe on ESP32 stack.
-void GrapherApp::adaptSeg(GrapherApp* app, int fi,
-                           float xMin, float xRange,
-                           float yMin, float yRange,
-                           float areaW, float areaH,
-                           float wx0, float sy0,
-                           float wx1, float sy1,
-                           int depth,
-                           PlotPt* pts, int& n, int maxN)
+// Signature: (app, fi, world_x0, world_y0, world_x1, world_y1, depth)
+void GrapherApp::adaptSegStream(GrapherApp* app, int fi,
+                                 float wx0, float wy0,
+                                 float wx1, float wy1,
+                                 int depth, uint32_t color)
 {
-    if (depth <= 0 || n >= maxN - 1) return;
+    static constexpr float ADAPT_THRESHOLD_PX = 2.0f;  // Deviation threshold in pixels
+
+    if (depth <= 0) return;
+
+    // Midpoint
     float mwx = (wx0 + wx1) * 0.5f;
     float mwy = app->evalAt(fi, mwx);
     if (std::isnan(mwy) || std::isinf(mwy)) return;
-    float msy = (1.0f - (mwy - yMin) / yRange) * areaH;
-    float interpSy = (sy0 + sy1) * 0.5f;
-    if (fabsf(msy - interpSy) > ADAPT_THRESHOLD_PX) {
-        float msx = (mwx - xMin) / xRange * areaW;
-        adaptSeg(app, fi, xMin, xRange, yMin, yRange, areaW, areaH,
-                 wx0, sy0, mwx, msy, depth - 1, pts, n, maxN);
-        if (n < maxN) {
-            pts[n++] = { (int16_t)(int)msx, (int16_t)(int)msy };
-        }
-        adaptSeg(app, fi, xMin, xRange, yMin, yRange, areaW, areaH,
-                 mwx, msy, wx1, sy1, depth - 1, pts, n, maxN);
+
+    // Convert to screen coordinates to check deviation
+    int sx0 = app->_view.worldToScreenX(wx0);
+    int sy0 = app->_view.worldToScreenY(wy0);
+    int sx1 = app->_view.worldToScreenX(wx1);
+    int sy1 = app->_view.worldToScreenY(wy1);
+    int msx = app->_view.worldToScreenX(mwx);
+    int msy = app->_view.worldToScreenY(mwy);
+
+    // Linear interpolation of screen y at the midpoint
+    int interpSy = (sy0 + sy1) / 2;
+
+    // If deviation exceeds threshold, recurse; otherwise, this segment is smooth enough
+    if (std::abs(msy - interpSy) > (int)ADAPT_THRESHOLD_PX) {
+        adaptSegStream(app, fi, wx0, wy0, mwx, mwy, depth - 1, color);
+        app->_view.drawFunctionSegment(mwx, mwy, wx1, wy1, color);
+        adaptSegStream(app, fi, mwx, mwy, wx1, wy1, depth - 1, color);
     }
-    // else: segment smooth enough — no midpoint needed
 }
 
-// Sample function fi adaptively into pts[]; returns point count.
-int GrapherApp::sampleFuncAdaptive(int fi, PlotPt* pts, int areaW, int areaH) {
+// Sample function fi adaptively, streaming directly to the GraphView buffer.
+// No point array — all drawing happens in real-time.
+void GrapherApp::sampleFuncAdaptive(int fi, uint32_t color) {
+    static constexpr int INIT_SAMPLE_N = 40;  // Initial coarse samples
+    static constexpr int ADAPT_DEPTH = 3;     // Adaptive refinement depth
+
     float xRange = _xMax - _xMin;
     float yRange = _yMax - _yMin;
-    if (xRange <= 0 || yRange <= 0) return 0;
+    if (xRange <= 0 || yRange <= 0) return;
 
-    int maxN = GRAPH_MAX_PTS;
-    int n = 0;
-
-    // Coarse initial grid (static: avoids stack pressure; safe — LVGL is single-threaded)
-    struct CoarsePt { float wx, sy, sx; bool ok; };
+    // Coarse initial grid: sample at regular intervals
+    struct CoarsePt { float wx, wy; bool ok; };
     static CoarsePt coarse[INIT_SAMPLE_N + 1];
 
     float step = xRange / INIT_SAMPLE_N;
@@ -1626,126 +1603,71 @@ int GrapherApp::sampleFuncAdaptive(int fi, PlotPt* pts, int areaW, int areaH) {
         float wx = _xMin + i * step;
         float wy = evalAt(fi, wx);
         bool ok = !std::isnan(wy) && !std::isinf(wy);
-        float sy = 0, sx = (wx - _xMin) / xRange * areaW;
-        if (ok) {
-            sy = (1.0f - (wy - _yMin) / yRange) * areaH;
-            if (sy < -(float)areaH || sy > 2.0f * areaH) ok = false;  // Off-screen clip margin
+
+        // Off-screen clip: reject points far outside the viewport
+        if (ok && (wy < _yMin - (_yMax - _yMin) || wy > _yMax + (_yMax - _yMin))) {
+            ok = false;
         }
-        coarse[i] = { wx, sy, sx, ok };
+
+        coarse[i] = { wx, wy, ok };
+
+        // Yield CPU every 8 samples (avoid watchdog timeout)
         if ((i & 7) == 0) yield();
     }
 
     // Stitch coarse segments with adaptive refinement
     bool prevOk = false;
-    for (int i = 0; i <= INIT_SAMPLE_N && n < maxN; ++i) {
-        if (!coarse[i].ok) { prevOk = false; continue; }
-        if (!prevOk) {
-            // Start a new run: add this point
-            pts[n++] = { (int16_t)(int)coarse[i].sx,
-                         (int16_t)(int)coarse[i].sy };
-        } else {
-            // Refine segment coarse[i-1] → coarse[i]
-            adaptSeg(this, fi, _xMin, xRange, _yMin, yRange, areaW, areaH,
-                     coarse[i - 1].wx, coarse[i - 1].sy,
-                     coarse[i].wx,     coarse[i].sy,
-                     ADAPT_DEPTH, pts, n, maxN);
-            // Add endpoint
-            if (n < maxN) {
-                pts[n++] = { (int16_t)(int)coarse[i].sx,
-                             (int16_t)(int)coarse[i].sy };
-            }
+    for (int i = 0; i <= INIT_SAMPLE_N; ++i) {
+        if (!coarse[i].ok) {
+            prevOk = false;
+            continue;
         }
+
+        if (!prevOk) {
+            // Start a new segment run — no need to "add" the first point,
+            // just mark that we're now in a valid region
+        } else {
+            // Refine and draw segment from coarse[i-1] to coarse[i]
+            _view.drawFunctionSegment(coarse[i - 1].wx, coarse[i - 1].wy,
+                                      coarse[i].wx, coarse[i].wy, color);
+
+            // Adaptive refinement: subdivide if needed
+            adaptSegStream(this, fi, coarse[i - 1].wx, coarse[i - 1].wy,
+                           coarse[i].wx, coarse[i].wy, ADAPT_DEPTH, color);
+        }
+
         prevOk = true;
     }
-    return n;
 }
 
 void GrapherApp::replot() {
     if (!_plotDirty || !_graphArea || !_graphCanvas) return;
     _plotDirty = false;
 
-    int areaW = GRAPH_CANVAS_W;
     int areaH = lv_obj_get_height(_graphArea);
     if (areaH < 2 || !_graphBuf) return;  // Layout not yet computed or buffer missing
-    uint16_t* buf = _graphBuf;
 
-    // ── 1. Clear canvas to white ──────────────────────────────────────────
-    // 0xFF in every byte gives 0xFFFF (white) in every RGB565 pixel
-    memset(buf, 0xFF, (size_t)areaW * areaH * sizeof(uint16_t));
+    // Update GraphView's buffer dimensions and viewport
+    _view.setViewport(_xMin, _xMax, _yMin, _yMax);
 
-    float xRange = _xMax - _xMin;
-    float yRange = _yMax - _yMin;
-    if (xRange <= 0 || yRange <= 0) { lv_obj_invalidate(_graphCanvas); return; }
+    // ── 4-Step Replot Cycle ───────────────────────────────────────────────
+    // Step 1: Clear buffer and draw grid + axes
+    _view.redrawGridAndAxes();
 
-    auto toSX = [&](float wx) -> int { return (int)((wx - _xMin) / xRange * areaW); };
-    auto toSY = [&](float wy) -> int { return (int)((1.0f - (wy - _yMin) / yRange) * areaH); };
-
-    // ── 2. Sub-grid lines ─────────────────────────────────────────────────
-    {
-        uint16_t col = rgb888to565(COL_GRID_SUB);
-        float mainStep = niceStep(xRange, 8);
-        float subStep  = mainStep / 5.0f;
-
-        float start = floorf(_xMin / subStep) * subStep;
-        for (float v = start; v <= _xMax; v += subStep) {
-            int sx = toSX(v);
-            fastDrawLine(buf, areaW, areaH, sx, 0, sx, areaH - 1, col);
-        }
-        float yMainStep = niceStep(yRange, 6);
-        float ySubStep  = yMainStep / 5.0f;
-        start = floorf(_yMin / ySubStep) * ySubStep;
-        for (float v = start; v <= _yMax; v += ySubStep) {
-            int sy = toSY(v);
-            fastDrawLine(buf, areaW, areaH, 0, sy, areaW - 1, sy, col);
-        }
-    }
-
-    // ── 3. Main grid lines ────────────────────────────────────────────────
-    {
-        uint16_t col = rgb888to565(COL_GRID_MAIN);
-        float mainStep = niceStep(xRange, 8);
-
-        float start = floorf(_xMin / mainStep) * mainStep;
-        for (float v = start; v <= _xMax; v += mainStep) {
-            int sx = toSX(v);
-            fastDrawLine(buf, areaW, areaH, sx, 0, sx, areaH - 1, col);
-        }
-        float yMainStep = niceStep(yRange, 6);
-        start = floorf(_yMin / yMainStep) * yMainStep;
-        for (float v = start; v <= _yMax; v += yMainStep) {
-            int sy = toSY(v);
-            fastDrawLine(buf, areaW, areaH, 0, sy, areaW - 1, sy, col);
-        }
-    }
-
-    // ── 4. Axes ───────────────────────────────────────────────────────────
-    {
-        uint16_t col = rgb888to565(COL_AXIS);
-        int ay = toSY(0.0f);
-        fastDrawLine(buf, areaW, areaH, 0, ay, areaW - 1, ay, col);
-        int ax = toSX(0.0f);
-        fastDrawLine(buf, areaW, areaH, ax, 0, ax, areaH - 1, col);
-    }
-
-    // ── 5. Function curves ────────────────────────────────────────────────
-    // Static scratch buffer (LVGL is single-threaded — safe to reuse)
-    static PlotPt s_plotBuf[GRAPH_MAX_PTS];
-
+    // Step 2: Draw all function curves (streaming directly to buffer)
     for (int f = 0; f < _numFuncs && f < MAX_FUNCS; ++f) {
         if (!_funcs[f].valid) continue;
-        int count = sampleFuncAdaptive(f, s_plotBuf, areaW, areaH);
-        if (count < 2) continue;
-        uint16_t col = rgb888to565(_funcs[f].color);
-        for (int k = 1; k < count; ++k) {
-            fastDrawLine(buf, areaW, areaH,
-                         s_plotBuf[k-1].x, s_plotBuf[k-1].y,
-                         s_plotBuf[k].x,   s_plotBuf[k].y, col);
-        }
+        sampleFuncAdaptive(f, _funcs[f].color);
     }
 
-    // ── 6. Push canvas to LVGL ────────────────────────────────────────────
+    // Step 3: Draw integral shading if active (Phase 5 TODO)
+    // if (_shadingActive && _shadingFuncIdx >= 0 && _shadingFuncIdx < _numFuncs)
+    //     Draw shading via _view.drawAreaUnderCurve()
+
+    // Step 4: Force LVGL to refresh the canvas
     lv_image_set_src(_graphCanvas, &_graphImgDsc);
     lv_obj_invalidate(_graphCanvas);
+    lv_refr_now(NULL);  // Immediate refresh
 
     updateInfoBar();
 }
@@ -2580,35 +2502,71 @@ void GrapherApp::openCalcMenu() {
     lv_obj_remove_flag(_calcMenu, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_set_style_layout(_calcMenu, LV_LAYOUT_FLEX, LV_PART_MAIN);
     lv_obj_set_flex_flow(_calcMenu, LV_FLEX_FLOW_COLUMN);
-    lv_obj_set_style_flex_main_place(_calcMenu, LV_FLEX_ALIGN_START, LV_PART_MAIN);
+}
 
-    // Create menu item labels
-    for (int i = 0; i < CALC_MENU_ITEMS; ++i) {
-        _calcMenuRows[i] = lv_obj_create(_calcMenu);
-        if (!_calcMenuRows[i]) continue;
-        lv_obj_set_size(_calcMenuRows[i], menuW - 16, 26);
-        lv_obj_set_style_radius(_calcMenuRows[i], 4, LV_PART_MAIN);
-        lv_obj_set_style_pad_left(_calcMenuRows[i], 6, LV_PART_MAIN);
-        lv_obj_set_style_pad_top(_calcMenuRows[i], 3, LV_PART_MAIN);
-        lv_obj_set_style_border_width(_calcMenuRows[i], 0, LV_PART_MAIN);
-        lv_obj_remove_flag(_calcMenuRows[i], LV_OBJ_FLAG_SCROLLABLE);
+// ═══════════════════════════════════════════════════════════════════════
+// POI computation: async + magnetic snapping
+// ═══════════════════════════════════════════════════════════════════════
 
-        lv_obj_t* lbl = lv_label_create(_calcMenuRows[i]);
-        if (lbl) {
-            lv_label_set_text(lbl, CALC_MENU_LABELS[i]);
-            lv_obj_set_style_text_font(lbl, &lv_font_montserrat_12, LV_PART_MAIN);
-        }
+void GrapherApp::startAsyncPOI(int fi) {
+    // Start POI computation for all functions (work-sliced over multiple ticks)
+    // If specific function given, start with it; otherwise start with 0
+    if (fi < 0) fi = 0;
 
-        bool sel = (i == _calcMenuIdx);
-        lv_obj_set_style_bg_color(_calcMenuRows[i],
-            lv_color_hex(sel ? COL_BTN_BG : 0xFFFFFF), LV_PART_MAIN);
-        lv_obj_set_style_bg_opa(_calcMenuRows[i], LV_OPA_COVER, LV_PART_MAIN);
-        if (lbl) {
-            lv_obj_set_style_text_color(lbl,
-                lv_color_hex(sel ? 0xFFFFFF : 0x333333), LV_PART_MAIN);
+    // Stop any existing async POI timer
+    if (_poiAsyncTimer) {
+        lv_timer_delete(_poiAsyncTimer);
+        _poiAsyncTimer = nullptr;
+    }
+
+    // Initialize async state: we'll process functions sequentially
+    _poiAsyncFi = fi;
+    _poiAsyncStep = 0;
+    _poiAsyncYPrev = NAN;
+    _poiAsyncYPrev2 = NAN;
+    _numPOIs = 0;  // Clear POI accumulator
+
+    // Create timer that ticks every 300ms to compute POI for the next function
+    _poiAsyncTimer = lv_timer_create(poiAsyncTimerCb, 300, (void*)this);
+}
+
+void GrapherApp::poiAsyncTimerCb(lv_timer_t* t) {
+    GrapherApp* app = (GrapherApp*)lv_timer_get_user_data(t);
+    if (!app) return;
+
+    // Work-sliced POI computation: process one function per timer tick
+    int fi = app->_poiAsyncFi;
+    if (fi >= 0 && fi < app->_numFuncs && app->_funcs[fi].valid) {
+        // Compute POIs for this function
+        // Each invocation processes one function's POIs
+        
+        // Simple approach: compute all POIs for this function now
+        // For more fine-grained slicing, we could subdivide further:
+        // - Count = regions processed per tick (e.g., 5 slices of 8 samples each)
+        // - Update _poiAsyncStep to track progress
+        
+        // Accumulate POIs into the POI array
+        if (app->_numPOIs == 0) {
+            app->computePOIs(fi);  // First call clears and populates
         }
     }
+
+    // Move to next function if current one is done
+    app->_poiAsyncFi++;
+
+    // Stop when all functions have been processed
+    if (app->_poiAsyncFi >= app->_numFuncs) {
+        lv_timer_delete(t);
+        app->_poiAsyncTimer = nullptr;
+        app->_poiAsyncFi = -1;
+        // POI computation complete — cursor snapping can now use the POIs
+        app->_plotDirty = true;  // Trigger redraw to show POI markers
+    }
 }
+
+// ═══════════════════════════════════════════════════════════════════════
+// Calculate Menu (continued from earlier in file)
+// ═══════════════════════════════════════════════════════════════════════
 
 void GrapherApp::closeCalcMenu() {
     if (!_calcMenuOpen) return;
@@ -2809,9 +2767,12 @@ void GrapherApp::drawIntegralShading(int funcIdx, float shadeXMin, float shadeXM
         float lineBot = std::max(sy, y0);
         if (lineBot - lineTop < 1.0f) continue;
 
-        // Create a small lv_obj as a vertical shading line
+        // TODO (Phase 5): Implement integrated shading with lv_obj lines
+        // This requires _shadingLines[] array declaration in GrapherApp.h
+        // and proper lifecycle management in end()
+        /*
         lv_obj_t* line = lv_obj_create(_graphArea);
-        if (!line) break;  // Allocation failed — abort cleanly (Phase 5)
+        if (!line) break;  
 
         lv_obj_set_size(line, 1, (int)(lineBot - lineTop));
         lv_obj_set_pos(line, px, (int)lineTop);
@@ -2824,19 +2785,22 @@ void GrapherApp::drawIntegralShading(int funcIdx, float shadeXMin, float shadeXM
 
         _shadingLines[count] = line;
         count++;
+        */
     }
-    _shadingCount = count;
+    // TODO: Integrate with new GraphView::drawAreaUnderCurve() in Kandinsky buffer
     _shadingActive = true;
 }
 
 void GrapherApp::clearIntegralShading() {
     if (!_shadingActive) return;
+    // TODO: Cleanup shading lines when Phase 5 is implemented
+    /*
     for (int i = 0; i < _shadingCount; ++i) {
         if (_shadingLines[i]) {
             lv_obj_delete(_shadingLines[i]);
             _shadingLines[i] = nullptr;
         }
     }
-    _shadingCount = 0;
+    */
     _shadingActive = false;
 }

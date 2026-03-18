@@ -1,188 +1,372 @@
 /**
- * GraphView.cpp
+ * GraphView.cpp — Grapher MVC: View implementation (Kandinsky)
+ *
+ * All pixel-level rendering into the RGB565 PSRAM buffer.
+ * No LVGL, no double-buffering overhead — pure direct-to-memory Kandinsky.
  */
-
 #include "GraphView.h"
-#include <float.h>
+#include <cmath>
+#include <cstring>
+#include <algorithm>
 
-GraphView::GraphView(DisplayDriver &display)
-    : _display(display),
-      _xMin(-10.0), _xMax(10.0),
-      _yMin(-10.0), _yMax(10.0),
-      _angleMode(AngleMode::DEG) {}
+namespace grapher {
 
-void GraphView::setView(double xMin, double xMax, double yMin, double yMax) {
+// ═════════════════════════════════════════════════════════════════════════
+// Constructor
+// ═════════════════════════════════════════════════════════════════════════
+
+GraphView::GraphView(uint16_t* graphBuf, int bufW, int bufH)
+    : _graphBuf(graphBuf), _bufW(bufW), _bufH(bufH)
+    , _xMin(-10.0f), _xMax(10.0f), _yMin(-7.0f), _yMax(7.0f)
+{
+}
+
+// ═════════════════════════════════════════════════════════════════════════
+// Viewport management
+// ═════════════════════════════════════════════════════════════════════════
+
+void GraphView::setViewport(float xMin, float xMax, float yMin, float yMax) {
     _xMin = xMin;
     _xMax = xMax;
     _yMin = yMin;
     _yMax = yMax;
 }
 
-void GraphView::zoom(double factor) {
-    double xRange = _xMax - _xMin;
-    double yRange = _yMax - _yMin;
-    double xCenter = (_xMin + _xMax) / 2.0;
-    double yCenter = (_yMin + _yMax) / 2.0;
+// ═════════════════════════════════════════════════════════════════════════
+// Coordinate conversion
+// ═════════════════════════════════════════════════════════════════════════
 
-    double newXHalf = (xRange * factor) / 2.0;
-    double newYHalf = (yRange * factor) / 2.0;
-
-    _xMin = xCenter - newXHalf;
-    _xMax = xCenter + newXHalf;
-    _yMin = yCenter - newYHalf;
-    _yMax = yCenter + newYHalf;
+int GraphView::worldToScreenX(float wx) const {
+    if (_xMax <= _xMin) return 0;
+    return (int)((wx - _xMin) / (_xMax - _xMin) * _bufW);
 }
 
-void GraphView::autoScaleY(const String &expression, VariableContext &vars) {
-    // 1. Tokenize & Parse expression once
-    _evaluator.setAngleMode(_angleMode);
-    
-    // Check if expression contains 'x'
-    if (expression.indexOf('x') < 0 && expression.indexOf('X') < 0) {
-        return; // Constant or invalid
+int GraphView::worldToScreenY(float wy) const {
+    if (_yMax <= _yMin) return 0;
+    // Y-axis is inverted in screen coordinates
+    return (int)((1.0f - (wy - _yMin) / (_yMax - _yMin)) * _bufH);
+}
+
+float GraphView::screenToWorldX(int sx) const {
+    if (_bufW <= 0) return 0.0f;
+    return _xMin + (float)sx / _bufW * (_xMax - _xMin);
+}
+
+float GraphView::screenToWorldY(int sy) const {
+    if (_bufH <= 0) return 0.0f;
+    return _yMax - (float)sy / _bufH * (_yMax - _yMin);
+}
+
+// ═════════════════════════════════════════════════════════════════════════
+// Color conversion (RGB888 → RGB565)
+// ═════════════════════════════════════════════════════════════════════════
+
+uint16_t GraphView::rgb888to565(uint32_t rgb) {
+    uint8_t r = (rgb >> 16) & 0xFF;
+    uint8_t g = (rgb >>  8) & 0xFF;
+    uint8_t b =  rgb        & 0xFF;
+    return (uint16_t)(((r >> 3) << 11) | ((g >> 2) << 5) | (b >> 3));
+}
+
+// ═════════════════════════════════════════════════════════════════════════
+// Bresenham line rasterizer (with clipping)
+// ═════════════════════════════════════════════════════════════════════════
+
+void GraphView::fastDrawLine(int x0, int y0, int x1, int y1, uint16_t color) {
+    // Trivial rejection: both points outside same edge
+    if ((x0 < 0 && x1 < 0) || (x0 >= _bufW && x1 >= _bufW) ||
+        (y0 < 0 && y1 < 0) || (y0 >= _bufH && y1 >= _bufH)) {
+        return;
     }
 
-    TokenizeResult tokRes = _tokenizer.tokenize(expression);
-    if (!tokRes.ok) return;
+    int dx =  std::abs(x1 - x0);
+    int dy = -std::abs(y1 - y0);
+    int sx = (x0 < x1) ? 1 : -1;
+    int sy = (y0 < y1) ? 1 : -1;
+    int err = dx + dy;
 
-    ParseResult parseRes = _parser.toRPN(tokRes.tokens);
-    if (!parseRes.ok) return;
-
-    // 2. Sample 30 points
-    double minVal = DBL_MAX;
-    double maxVal = -DBL_MAX;
-    int samples = 30;
-    double step = (_xMax - _xMin) / (samples - 1);
-    
-    bool validPoints = false;
-    
-    // Save original X value
-    double originalX = 0;
-    vars.getVariable('x', originalX);
-
-    for (int i = 0; i < samples; ++i) {
-        double x = _xMin + i * step;
-        vars.setVariable('x', x);
-        
-        EvalResult res = _evaluator.evaluateRPN(parseRes.outputRPN, vars);
-        if (res.ok && !isnan(res.value) && !isinf(res.value)) {
-            if (res.value < minVal) minVal = res.value;
-            if (res.value > maxVal) maxVal = res.value;
-            validPoints = true;
+    // Fast path: both endpoints inside — skip per-pixel bounds check
+    if ((unsigned)x0 < (unsigned)_bufW && (unsigned)x1 < (unsigned)_bufW &&
+        (unsigned)y0 < (unsigned)_bufH && (unsigned)y1 < (unsigned)_bufH) {
+        for (;;) {
+            _graphBuf[y0 * _bufW + x0] = color;
+            if (x0 == x1 && y0 == y1) break;
+            int e2 = err * 2;
+            if (e2 >= dy) { err += dy; x0 += sx; }
+            if (e2 <= dx) { err += dx; y0 += sy; }
+        }
+    } else {
+        // Clipping path: check each pixel before writing
+        for (;;) {
+            if ((unsigned)x0 < (unsigned)_bufW && (unsigned)y0 < (unsigned)_bufH)
+                _graphBuf[y0 * _bufW + x0] = color;
+            if (x0 == x1 && y0 == y1) break;
+            int e2 = err * 2;
+            if (e2 >= dy) { err += dy; x0 += sx; }
+            if (e2 <= dx) { err += dx; y0 += sy; }
         }
     }
-    
-    // Restore X
-    vars.setVariable('x', originalX);
+}
 
-    if (validPoints) {
-        // Apply margin
-        double range = maxVal - minVal;
-        if (range < 1e-9) range = 2.0; // Flat line case
-        
-        double margin = range * 0.1;
-        _yMin = minVal - margin;
-        _yMax = maxVal + margin;
+// ═════════════════════════════════════════════════════════════════════════
+// Grid and axes
+// ═════════════════════════════════════════════════════════════════════════
+
+void GraphView::drawGrid() {
+    uint16_t gridColor = rgb888to565(0xE0E0E0);  // Light grey
+    uint16_t subGridColor = rgb888to565(0xF0F0F0);  // Lighter grey
+
+    float xRange = _xMax - _xMin;
+    float yRange = _yMax - _yMin;
+
+    // Nice step for grid lines: 1, 2, 5 × 10^n
+    auto niceStep = [](float range, int maxTicks) -> float {
+        float rough = range / maxTicks;
+        float mag = powf(10.0f, floorf(log10f(rough)));
+        float norm = rough / mag;
+        float nice;
+        if (norm < 1.5f)      nice = 1.0f;
+        else if (norm < 3.5f) nice = 2.0f;
+        else if (norm < 7.5f) nice = 5.0f;
+        else                  nice = 10.0f;
+        return nice * mag;
+    };
+
+    float xStep = niceStep(xRange, 8);
+    float yStep = niceStep(yRange, 6);
+
+    int x0_screen = worldToScreenX(_xMin);
+    int x1_screen = worldToScreenX(_xMax);
+    int y0_screen = worldToScreenY(_yMax);
+    int y1_screen = worldToScreenY(_yMin);
+
+    // Vertical grid lines
+    float xStart = floorf(_xMin / xStep) * xStep;
+    for (float x = xStart; x <= _xMax; x += xStep) {
+        int sx = worldToScreenX(x);
+        if (sx >= 0 && sx < _bufW) {
+            fastDrawLine(sx, 0, sx, _bufH - 1, gridColor);
+        }
+    }
+
+    // Horizontal grid lines
+    float yStart = floorf(_yMin / yStep) * yStep;
+    for (float y = yStart; y <= _yMax; y += yStep) {
+        int sy = worldToScreenY(y);
+        if (sy >= 0 && sy < _bufH) {
+            fastDrawLine(0, sy, _bufW - 1, sy, gridColor);
+        }
     }
 }
 
-void GraphView::renderGraph(const String &expression, VariableContext &vars) {
-    _display.clear(TFT_BLACK);
-    
-    // Prepare expression
-    _evaluator.setAngleMode(_angleMode);
-    TokenizeResult tokRes = _tokenizer.tokenize(expression);
-    if (!tokRes.ok) {
-        _display.setTextColor(TFT_RED);
-        _display.drawText(0, 0, "Err Tok");
-        return;
-    }
-    ParseResult parseRes = _parser.toRPN(tokRes.tokens);
-    if (!parseRes.ok) {
-        _display.setTextColor(TFT_RED);
-        _display.drawText(0, 0, "Err Pars");
-        return;
+void GraphView::drawAxes() {
+    uint16_t axisColor = rgb888to565(0x333333);  // Dark grey
+
+    // X-axis (y = 0)
+    if (_yMin < 0.0f && _yMax > 0.0f) {
+        int sy = worldToScreenY(0.0f);
+        fastDrawLine(0, sy, _bufW - 1, sy, axisColor);
     }
 
-    drawGridAndAxes();
+    // Y-axis (x = 0)
+    if (_xMin < 0.0f && _xMax > 0.0f) {
+        int sx = worldToScreenX(0.0f);
+        fastDrawLine(sx, 0, sx, _bufH - 1, axisColor);
+    }
+}
 
-    // Plot
-    _display.tft().startWrite(); 
-    // ^ Assuming TFT_eSPI, startWrite/endWrite optimizes SPI transaction
-    // But DisplayDriver wraps it. We can use drawPixel, or access tft() if public.
-    // DisplayDriver has tft() accessor.
+void GraphView::redrawGridAndAxes() {
+    // Clear to white
+    uint16_t whiteColor = rgb888to565(0xFFFFFF);
+    std::fill(_graphBuf, _graphBuf + _bufW * _bufH, whiteColor);
 
-    int screenW = _display.width();
-    int screenH = _display.height();
-    
-    double originalX = 0;
-    vars.getVariable('x', originalX);
+    // Draw grid and axes
+    drawGrid();
+    drawAxes();
+}
 
-    int prevPx = -1, prevPy = -1;
+void GraphView::clearBuffer() {
+    // Clear to white (does NOT redraw grid/axes)
+    uint16_t whiteColor = rgb888to565(0xFFFFFF);
+    std::fill(_graphBuf, _graphBuf + _bufW * _bufH, whiteColor);
+}
 
-    for (int px = 0; px < screenW; ++px) {
-        // Screen X -> World X
-        double xNormal = (double)px / (double)(screenW - 1);
-        double wx = _xMin + xNormal * (_xMax - _xMin);
+void GraphView::drawFunctionSegment(float wx0, float wy0, float wx1, float wy1, uint32_t rgbColor) {
+    // Convert world coordinates to screen coordinates and draw a line
+    int sx0 = worldToScreenX(wx0);
+    int sy0 = worldToScreenY(wy0);
+    int sx1 = worldToScreenX(wx1);
+    int sy1 = worldToScreenY(wy1);
 
-        vars.setVariable('x', wx);
-        EvalResult res = _evaluator.evaluateRPN(parseRes.outputRPN, vars);
-        
-        if (res.ok && !isnan(res.value) && !isinf(res.value)) {
-            int py = worldToScreenY(res.value);
-            
-            // Clip drawing to screen
-            // Simple line drawing between points
-            if (prevPx >= 0) {
-                 // Check if jump is too big (asymptote detection simple version)
-                 if (abs(py - prevPy) < screenH) {
-                     _display.drawLine(prevPx, prevPy, px, py, TFT_YELLOW);
-                 }
+    uint16_t color565 = rgb888to565(rgbColor);
+    fastDrawLine(sx0, sy0, sx1, sy1, color565);
+}
+
+// ═════════════════════════════════════════════════════════════════════════
+// Function curve rasterization
+// ═════════════════════════════════════════════════════════════════════════
+
+void GraphView::drawFunctionCurve(const std::vector<float>& xSamples,
+                                  const std::vector<float>& ySamples,
+                                  uint32_t rgbColor) {
+    if (xSamples.size() < 2 || ySamples.size() != xSamples.size()) return;
+
+    uint16_t color565 = rgb888to565(rgbColor);
+
+    // Draw polyline connecting sample points
+    for (size_t i = 1; i < xSamples.size(); ++i) {
+        float x0 = xSamples[i - 1];
+        float y0 = ySamples[i - 1];
+        float x1 = xSamples[i];
+        float y1 = ySamples[i];
+
+        // Skip segments with NaN or large jumps (discontinuities)
+        if (std::isnan(y0) || std::isnan(y1)) continue;
+        if (std::abs(y1 - y0) > (_yMax - _yMin) * 2.0f) continue;
+
+        int sx0 = worldToScreenX(x0);
+        int sy0 = worldToScreenY(y0);
+        int sx1 = worldToScreenX(x1);
+        int sy1 = worldToScreenY(y1);
+
+        fastDrawLine(sx0, sy0, sx1, sy1, color565);
+    }
+}
+
+// ═════════════════════════════════════════════════════════════════════════
+// Integral shading (vertical lines from y=0 to y=f(x))
+// ═════════════════════════════════════════════════════════════════════════
+
+void GraphView::drawAreaUnderCurve(const std::vector<float>& xSamples,
+                                   const std::vector<float>& ySamples,
+                                   float x0, float x1,
+                                   uint32_t rgbColor) {
+    if (xSamples.size() < 2 || ySamples.size() != xSamples.size()) return;
+
+    uint16_t color565 = rgb888to565(rgbColor);
+    int sx0 = worldToScreenX(x0);
+    int sx1 = worldToScreenX(x1);
+
+    // Clamp to buffer bounds
+    sx0 = std::max(0, std::min(sx0, _bufW - 1));
+    sx1 = std::max(0, std::min(sx1, _bufW - 1));
+    if (sx0 > sx1) std::swap(sx0, sx1);
+
+    // For each pixel column in the range, find the value at that x
+    // and draw a vertical line from y=0 to y=f(x)
+    for (int sx = sx0; sx <= sx1; ++sx) {
+        float worldX = screenToWorldX(sx);
+
+        // Interpolate y value from sample data
+        float yVal = 0.0f;
+        bool found = false;
+
+        for (size_t i = 1; i < xSamples.size(); ++i) {
+            if (xSamples[i - 1] <= worldX && worldX <= xSamples[i]) {
+                // Linear interpolation
+                float t = (worldX - xSamples[i - 1]) / (xSamples[i] - xSamples[i - 1]);
+                yVal = ySamples[i - 1] + t * (ySamples[i] - ySamples[i - 1]);
+                found = true;
+                break;
             }
-            // Point (optional, line is better)
-            // _display.drawPixel(px, py, TFT_YELLOW);
+        }
 
-            prevPx = px;
-            prevPy = py;
-        } else {
-            prevPx = -1; // Gap in graph
+        if (!found || std::isnan(yVal)) continue;
+
+        // Draw vertical line from y=0 to y=yVal using stipple (every 2nd pixel)
+        int sy0 = worldToScreenY(0.0f);
+        int sy1 = worldToScreenY(yVal);
+        if (sy0 > sy1) std::swap(sy0, sy1);
+
+        for (int sy = sy0; sy <= sy1; ++sy) {
+            if ((sy - sy0) % 2 == 0) {  // Stipple pattern
+                if ((unsigned)sy < (unsigned)_bufH)
+                    _graphBuf[sy * _bufW + sx] = color565;
+            }
         }
     }
-    
-    _display.tft().endWrite();
-    vars.setVariable('x', originalX);
-    
-    // Draw Info
-    _display.setTextColor(TFT_WHITE, TFT_BLACK);
-    _display.setTextSize(1);
-    _display.drawText(2, 2, "Y=");
-    _display.drawText(20, 2, expression);
 }
 
-void GraphView::drawGridAndAxes() {
-    int w = _display.width();
-    int h = _display.height();
+// ═════════════════════════════════════════════════════════════════════════
+// Tangent line (numerical derivative + slope line)
+// ═════════════════════════════════════════════════════════════════════════
 
-    // Axes
-    // X Axis (y=0)
-    if (_yMin <= 0 && _yMax >= 0) {
-        int y0 = worldToScreenY(0.0);
-        _display.drawLine(0, y0, w, y0, TFT_DARKGREY);
+void GraphView::drawTangent(const std::vector<float>& xSamples,
+                            const std::vector<float>& ySamples,
+                            float xTarget,
+                            uint32_t rgbColor) {
+    if (xSamples.size() < 3 || ySamples.size() != xSamples.size()) return;
+
+    // Find the y value at xTarget by interpolation
+    float yTarget = 0.0f;
+    int idx = -1;
+    for (size_t i = 1; i < xSamples.size(); ++i) {
+        if (xSamples[i - 1] <= xTarget && xTarget <= xSamples[i]) {
+            float t = (xTarget - xSamples[i - 1]) / (xSamples[i] - xSamples[i - 1]);
+            yTarget = ySamples[i - 1] + t * (ySamples[i] - ySamples[i - 1]);
+            idx = i;
+            break;
+        }
     }
-    // Y Axis (x=0)
-    if (_xMin <= 0 && _xMax >= 0) {
-        int x0 = worldToScreenX(0.0);
-        _display.drawLine(x0, 0, x0, h, TFT_DARKGREY);
+
+    if (idx < 1 || idx >= (int)xSamples.size()) return;
+
+    // Numerical derivative: (f(x+h) - f(x-h)) / (2h)
+    float h = (xSamples[idx] - xSamples[idx - 1]) * 0.5f;
+    if (h <= 0.0f) return;
+
+    float yLeft = ySamples[idx - 1];
+    float yRight = (idx + 1 < (int)ySamples.size()) ? ySamples[idx + 1]
+                                                     : ySamples[idx];
+    float derivative = (yRight - yLeft) / (2.0f * h);
+
+    // Line equation: y - yTarget = derivative * (x - xTarget)
+    // Find two points on the screen boundary to draw the line
+
+    int sx_center = worldToScreenX(xTarget);
+    int sy_center = worldToScreenY(yTarget);
+
+    // Find left and right intersections with screen edges
+    int sx_left = 0, sy_left = 0, sx_right = _bufW - 1, sy_right = 0;
+
+    // Left edge (x = 0)
+    float x_left = screenToWorldX(0);
+    float y_left = yTarget + derivative * (x_left - xTarget);
+    sy_left = worldToScreenY(y_left);
+
+    // Right edge (x = bufW - 1)
+    float x_right = screenToWorldX(_bufW - 1);
+    float y_right = yTarget + derivative * (x_right - xTarget);
+    sy_right = worldToScreenY(y_right);
+
+    uint16_t color565 = rgb888to565(rgbColor);
+    fastDrawLine(sx_left, sy_left, sx_right, sy_right, color565);
+}
+
+// ═════════════════════════════════════════════════════════════════════════
+// Intersection marker
+// ═════════════════════════════════════════════════════════════════════════
+
+void GraphView::drawIntersectionMarker(float xInt, float yInt, uint32_t rgbColor) {
+    int sx = worldToScreenX(xInt);
+    int sy = worldToScreenY(yInt);
+
+    if (sx < 0 || sx >= _bufW || sy < 0 || sy >= _bufH) return;
+
+    uint16_t color565 = rgb888to565(rgbColor);
+
+    // Draw a small circle (radius 3 pixels) at the intersection
+    int radius = 3;
+    for (int dy = -radius; dy <= radius; ++dy) {
+        for (int dx = -radius; dx <= radius; ++dx) {
+            if (dx * dx + dy * dy <= radius * radius) {
+                int px = sx + dx;
+                int py = sy + dy;
+                if ((unsigned)px < (unsigned)_bufW && (unsigned)py < (unsigned)_bufH)
+                    _graphBuf[py * _bufW + px] = color565;
+            }
+        }
     }
 }
 
-int GraphView::worldToScreenX(double x) const {
-    double ratio = (x - _xMin) / (_xMax - _xMin);
-    return (int)(ratio * (_display.width() - 1));
-}
-
-int GraphView::worldToScreenY(double y) const {
-    // Invert Y because screen Y grows downwards
-    double ratio = (y - _yMin) / (_yMax - _yMin);
-    return (int)((1.0 - ratio) * (_display.height() - 1));
-}
+} // namespace grapher
