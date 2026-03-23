@@ -30,7 +30,7 @@
 
 </div>
 
-<sub>*This project is currently in active development. Featured on Hackaday. Contributors welcome! This was Vibe-Coded, because a project of this magnitude, by hand, would have taken years, but with this, I was able to make it in 30 days. This is the future of programming, not writing every line by hand, we are in 2026, not in 2015.*</sub>
+<sub>*This project was developed with AI assistance (Claude/Copilot) for code generation, guided by the author's systems architecture decisions. All design choices like DAG structure, memory management, parser design, were made and validated by the author.*</sub>
 
 ---
 
@@ -95,73 +95,83 @@
 
 ---
 
+## Photo gallery
+
+### Neural Network Simulator:
+![Image](https://github.com/user-attachments/assets/353db3e3-6f3f-4bd1-973f-55b6798b57e0)
+
+### Fluid 2D Simulator:
+![Image](https://github.com/user-attachments/assets/546cebc5-3288-4c1d-a7f1-1fc079083cf7)
+
+### Periodic Table (Chemistry App):
+![Image](https://github.com/user-attachments/assets/2ad74661-2b3d-48fb-b313-ff48e37727f3)
+
+### Grapher App:
+![Image](https://github.com/user-attachments/assets/db788a6a-9ee3-4d40-b86a-607843d3a1fe)
+
+### Steps (Equations App) (WIP, still in development, Alpha):
+![Image](https://github.com/user-attachments/assets/5b67651e-b090-468e-997e-c5894b59595b)
+![Image](https://github.com/user-attachments/assets/c6120c05-4c0b-4e52-a65c-d122f5b54889)
+
+### Calculus App:
+![Image](https://github.com/user-attachments/assets/01923e6d-5380-42ab-9213-f927f385aef8)
+
+### Probability (Gaussian Distribution):
+![Image](https://github.com/user-attachments/assets/f6041c0a-8423-43fa-84e7-f53bad07441b)
+
+### Python App:
+![Image](https://github.com/user-attachments/assets/243ce6a3-a6f5-4a73-a87f-6522058f042a)
+![Image](https://github.com/user-attachments/assets/22360608-7e25-44a7-854b-9e1070cfb15b)
+
+### Bridge Designer:
+![Image](https://github.com/user-attachments/assets/87218d20-1495-4da7-9d3b-032125e37097)
+
+### Circuit Simulator (Circuit Core, Alpha):
+![Image](https://github.com/user-attachments/assets/3e6163c9-f592-4f3c-a7ed-a07b21c2d6ae)
+
+### Particle Lab (Powder Toy like):
+![Image](https://github.com/user-attachments/assets/452ea202-4b8f-46ff-b989-685c42d53914)
+
+### Optics Lab:
+![Image](https://github.com/user-attachments/assets/dfff1cf6-4905-45e8-a151-1c2b52fff67e)
+
+---
+
 ## System Architecture
 
-```
-┌──────────────────────────────────────────────────────────────────────────┐
-│                           ESP32-S3 N16R8                                 │
-│                                                                          │
-│  ┌───────────────────────────────────────────────────────────────────┐  │
-│  │                         main.cpp                                  │  │
-│  │   setup(): PSRAM → TFT → LVGL → Splash → SystemApp → Serial      │  │
-│  │   loop():  lv_timer_handler() · app.update() · serial.poll()     │  │
-│  └──────────────────────────┬────────────────────────────────────────┘  │
-│                             │                                            │
-│  ┌──────────────────────────▼────────────────────────────────────────┐  │
-│  │                    SystemApp  (Dispatcher)                        │  │
-│  │                                                                   │  │
-│  │  ┌──────────┐  ┌──────────────────┐  ┌────────────────────────┐  │  │
-│  │  │ MainMenu │  │  CalculationApp  │  │      GrapherApp        │  │  │
-│  │  │  LVGL    │  │  Natural VPAM    │  │  y=f(x)·Zoom·Pan       │  │  │
-│  │  │  Grid    │  │  History (32)    │  │  Value table            │  │  │
-│  │  └──────────┘  └──────────────────┘  └────────────────────────┘  │  │
-│  │  ┌──────────────────────────────────────────────────────────────┐ │  │
-│  │  │              EquationsApp  ★ Pro-CAS                         │ │  │
-│  │  │       Linear · Quadratic · 2×2 System (linear + NL)         │ │  │
-│  │  │       Discriminant · Quadratic formula · Gauss · Resultant  │ │  │
-│  │  │       Detailed steps in PSRAM · Natural Display              │ │  │
-│  │  └──────────────────────────────────────────────────────────────┘ │  │
-│  │  ┌──────────────────────────────────────────────────────────────┐ │  │
-│  │  │   CalculusApp ★ Pro-CAS  (Unified: d/dx + ∫dx)              │ │  │
-│  │  │   Derivatives: 17 rules · Simplification · Steps            │ │  │
-│  │  │   Integrals: Table · Linearity · U-sub · Parts (LIATE)      │ │  │
-│  │  │   Tab-based mode switching · +C · Natural Display            │ │  │
-│  │  └──────────────────────────────────────────────────────────────┘ │  │
-│  │  ┌──────────────────────────────────────────────────────────────┐ │  │
-│  │  │   SettingsApp — Complex roots · Precision · Angle mode      │ │  │
-│  │  └──────────────────────────────────────────────────────────────┘ │  │
-│  │  [ Sequences · Regression · Table · Probability ]                 │  │
-│  │  [ BridgeDesigner · CircuitCore · Fluid2D · ParticleLab ]       │  │
-│  └───────────────────────────────────────────────────────────────────┘  │
-│                                                                          │
-│  ┌──────────────────────────┐  ┌─────────────────────────────────────┐  │
-│  │      Math Engine         │  │       Pro-CAS Engine  ★ COMPLETE   │  │
-│  │                          │  │                                     │  │
-│  │  Tokenizer               │  │  CASInt / CASRational (BigNum)      │  │
-│  │  Parser (Shunting-Yard)  │  │  SymExpr DAG (hash-consed)          │  │
-│  │  Evaluator (RPN)         │  │  ConsTable (dedup PSRAM)             │  │
-│  │  ExprNode (visual AST)   │  │  SymSimplify (8-pass fixed-point)   │  │
-│  │  VariableContext A–Z     │  │  SymDiff (17 differentiation rules) │  │
-│  │  EquationSolver (N-R)    │  │  SymIntegrate (Slagle heuristic)   │  │
-│  └──────────────────────────┘  │  OmniSolver (analytic isolation)    │  │
-│                                │  SymPolyMulti (Sylvester resultant) │  │
-│                                │  CASStepLogger (steps in PSRAM)     │  │
-│                                │  SymExprToAST (CAS → Natural Disp.) │  │
-│                                └─────────────────────────────────────┘  │
-│  ┌──────────────────────────┐  ┌─────────────────────────────────────┐  │
-│  │     Display Layer        │  │          Input Layer                │  │
-│  │                          │  │                                     │  │
-│  │  DisplayDriver           │  │  KeyMatrix 5×10 (50 keys)           │  │
-│  │  (TFT_eSPI FSPI)         │  │  SerialBridge (virtual PC keyboard) │  │
-│  │  LVGL flush DMA          │  │  LvglKeypad (LVGL indev)            │  │
-│  │  ILI9341 @ 10 MHz        │  │  LittleFS (persistent vars)         │  │
-│  └──────────────────────────┘  └─────────────────────────────────────┘  │
-└──────────────────────────────────────────────────────────────────────────┘
-                                     │ SPI @ 10 MHz
-                          ┌──────────▼──────────┐
-                          │   ILI9341 IPS 3.2"  │
-                          │   320×240 · 16 bpp  │
-                          └─────────────────────┘
+```mermaid
+flowchart TB
+   subgraph esp [ESP32-S3 N16R8]
+      main["main.cpp<br/>setup(): PSRAM → TFT → LVGL → Splash → SystemApp<br/>loop(): lv_timer_handler() · app.update() · serial.poll()"]
+      system["SystemApp (Dispatcher)"]
+      main --> system
+   end
+
+   subgraph apps [Applications]
+      mm["MainMenu (LVGL)"]
+      calc["CalculationApp (Natural VPAM, History)"]
+      grapher["GrapherApp (y=f(x), Zoom & Pan)"]
+      eq["EquationsApp (Pro-CAS)"]
+      calculus["CalculusApp (d/dx, ∫dx)"]
+      settings["SettingsApp"]
+   end
+
+   system --> apps
+
+   math["Math Engine<br/>Tokenizer · Parser · Evaluator · ExprNode · VariableContext · EquationSolver"]
+   procas["Pro-CAS Engine<br/>CASInt · CASRational · SymExpr DAG · SymSimplify · SymDiff · SymIntegrate"]
+
+   system --> math
+   math --> procas
+
+   display["Display Layer<br/>DisplayDriver · LVGL flush DMA · ILI9341 @ 10 MHz"]
+   input["Input Layer<br/>KeyMatrix 5×10 · SerialBridge · LvglKeypad · LittleFS"]
+
+   system --> display
+   system --> input
+
+   display --> ili["ILI9341 IPS 3.2\"<br/>320×240 · 16 bpp"]
+   ili -."SPI @ 10 MHz".-> esp
 ```
 
 ---
@@ -172,60 +182,27 @@ The **Pro-CAS** (Computer Algebra System) is NumOS's complete symbolic-algebra e
 
 ### CAS Pipeline (Derivatives)
 
-```
-User input (CalculusApp):
-  "x^3 + sin(x)"
-           │
-           ▼
-  ┌──────────────────┐
-  │   Math Engine    │  MathAST visual (VPAM)
-  │  (Parser+Tokens) │  ─────────────────►
-  └──────────────────┘
-           │
-           ▼
-  ┌──────────────────┐
-  │  ASTFlattener    │  MathAST → SymExpr DAG (hash-consed)
-  └──────────────────┘
-           │
-           ▼
-  ┌──────────────────┐
-  │    SymDiff       │  d/dx → 3x² + cos(x)
-  └──────────────────┘
-           │
-           ▼
-  ┌──────────────────┐
-  │  SymSimplify     │  8-pass fixed-point simplification
-  └──────────────────┘
-           │
-           ▼
-  ┌──────────────────┐
-  │  SymExprToAST    │  SymExpr → MathAST Natural Display
-  └──────────────────┘
-           │
-           ▼
-  MathCanvas renders: 3x² + cos(x)
+```mermaid
+flowchart TB
+   user["User input (CalculusApp):<br/>\"x^3 + sin(x)\""]
+   user --> me[Math Engine<br/>(Parser + Tokenizer)]
+   me --> af[ASTFlattener<br/>MathAST → SymExpr DAG]
+   af --> sd[SymDiff<br/>d/dx → 3x^2 + cos(x)]
+   sd --> ss[SymSimplify<br/>8-pass fixed-point simplification]
+   ss --> sea[SymExprToAST<br/>SymExpr → MathAST (Natural Display)]
+   sea --> canvas[MathCanvas renders:<br/>3x^2 + cos(x)]
 ```
 
 ### CAS Pipeline (Integrals)
 
-```
-User input (CalculusApp, ∫dx mode):
-  "x · cos(x)"
-           │
-           ▼
-  ASTFlattener → SymExpr DAG
-           │
-           ▼
-  ┌──────────────────┐
-  │  SymIntegrate    │  Strategies: table → linearity →
-  │  (Slagle)        │  u-substitution → parts (LIATE)
-  └──────────────────┘
-           │
-           ▼
-  SymSimplify → SymExprToAST::convertIntegral()
-           │
-           ▼
-  MathCanvas renders: x·sin(x) + cos(x) + C
+```mermaid
+flowchart TB
+   userInt["User input (CalculusApp, ∫dx mode):<br/>\"x · cos(x)\""]
+   userInt --> af2[ASTFlattener → SymExpr DAG]
+   af2 --> sint[SymIntegrate<br/>(Slagle) — table → linearity → u-sub → parts (LIATE)]
+   sint --> ss2[SymSimplify]
+   ss2 --> conv[SymExprToAST::convertIntegral()] 
+   conv --> canvas2[MathCanvas renders:<br/>x·sin(x) + cos(x) + C]
 ```
 
 ### Pro-CAS Components
