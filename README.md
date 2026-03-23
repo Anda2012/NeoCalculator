@@ -556,8 +556,8 @@ Issues discovered and resolved during bring-up. **Essential** for any fork or ne
 | Matrices | 🔲 | ✅ | ✅ | ✅ |
 | Complex numbers | 🔲 | ✅ | ✅ | ✅ |
 | Scripting / Python | ✅ NeoLanguage + Python | ✅ | ✅ TI-BASIC | ✅ HP PPL |
-| WiFi / Connectivity | ✅ | ✅ | ❌ | ❌ |
-| Rechargeable battery | ✅ | ✅ | ❌ | ✅ |
+| WiFi / Connectivity | 🔲 | ✅ | ❌ | ❌ |
+| Rechargeable battery | 🔲 | ✅ | ❌ | ✅ |
 | Estimated HW cost | **~€15-20** | €79 | €149 | €179 |
 | Platform | ESP32-S3 | STM32F730 | Zilog eZ80 | ARM Cortex-A7 |
 
@@ -594,11 +594,9 @@ NumOS is an open-source project that aspires to grow with a community. Contribut
 
 | Module | Description |
 |:-------|:------------|
-| **Statistics App** | Mean, median, mode, standard deviation, data lists |
-| **Regression App** | Linear/quadratic regression with R² coefficient |
 | **Sequences App** | Arithmetic and geometric sequences, Nth term, partial sums |
-| **Settings App** | ~~Angle mode DEG/RAD/GRA, brightness, factory reset~~ ✅ Done — remaining: brightness PWM, factory reset |
-| **Advanced CAS** | ~~Symbolic derivatives and integrals~~ ✅ Done — remaining: definite integrals, series |
+| **Settings App** | ~~Angle mode DEG/RAD/GRA, brightness, factory reset~~ ✅ Done, remaining: brightness PWM, factory reset |
+| **Advanced CAS** | ~~Symbolic derivatives and integrals~~ ✅ Done, remaining: definite integrals, series |
 | **Better UI/UX** | General improvement on UI and UX for real product release |
 | **Matrices** | Matrix editor, determinant, inverse, multiplication |
 | **Physical keyboard** | ✅ GPIO 4/5 conflict resolved — `Keyboard` driver 5×10 implemented (Phase 7) |
