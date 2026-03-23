@@ -141,13 +141,13 @@
 
 ```mermaid
 flowchart TB
-   subgraph esp [ESP32-S3 N16R8]
-      main["main.cpp<br/>setup(): PSRAM → TFT → LVGL → Splash → SystemApp<br/>loop(): lv_timer_handler() · app.update() · serial.poll()"]
+   subgraph esp[ESP32-S3 N16R8]
+      main["main.cpp: setup() → PSRAM, TFT, LVGL, Splash, SystemApp; loop(): lv_timer_handler(), app.update(), serial.poll()"]
       system["SystemApp (Dispatcher)"]
       main --> system
    end
 
-   subgraph apps [Applications]
+   subgraph apps[Applications]
       mm["MainMenu (LVGL)"]
       calc["CalculationApp (Natural VPAM, History)"]
       grapher["GrapherApp (y=f(x), Zoom & Pan)"]
@@ -156,22 +156,27 @@ flowchart TB
       settings["SettingsApp"]
    end
 
-   system --> apps
+   system --> mm
+   system --> calc
+   system --> grapher
+   system --> eq
+   system --> calculus
+   system --> settings
 
-   math["Math Engine<br/>Tokenizer · Parser · Evaluator · ExprNode · VariableContext · EquationSolver"]
-   procas["Pro-CAS Engine<br/>CASInt · CASRational · SymExpr DAG · SymSimplify · SymDiff · SymIntegrate"]
+   math["Math Engine: Tokenizer · Parser · Evaluator · ExprNode · VariableContext · EquationSolver"]
+   procas["Pro-CAS Engine: CASInt · CASRational · SymExpr DAG · SymSimplify · SymDiff · SymIntegrate"]
 
    system --> math
    math --> procas
 
-   display["Display Layer<br/>DisplayDriver · LVGL flush DMA · ILI9341 @ 10 MHz"]
-   input["Input Layer<br/>KeyMatrix 5×10 · SerialBridge · LvglKeypad · LittleFS"]
+   display["Display Layer: DisplayDriver · LVGL flush DMA · ILI9341 @ 10 MHz"]
+   input["Input Layer: KeyMatrix 5x10 · SerialBridge · LvglKeypad · LittleFS"]
 
    system --> display
    system --> input
 
-   display --> ili["ILI9341 IPS 3.2\"<br/>320×240 · 16 bpp"]
-   ili -."SPI @ 10 MHz".-> esp
+   display -->|SPI @ 10 MHz| ili["ILI9341 IPS 3.2 in — 320x240 · 16 bpp"]
+   ili -.-> esp
 ```
 
 ---
@@ -184,25 +189,25 @@ The **Pro-CAS** (Computer Algebra System) is NumOS's complete symbolic-algebra e
 
 ```mermaid
 flowchart TB
-   user["User input (CalculusApp):<br/>\"x^3 + sin(x)\""]
-   user --> me[Math Engine<br/>(Parser + Tokenizer)]
-   me --> af[ASTFlattener<br/>MathAST → SymExpr DAG]
-   af --> sd[SymDiff<br/>d/dx → 3x^2 + cos(x)]
-   sd --> ss[SymSimplify<br/>8-pass fixed-point simplification]
-   ss --> sea[SymExprToAST<br/>SymExpr → MathAST (Natural Display)]
-   sea --> canvas[MathCanvas renders:<br/>3x^2 + cos(x)]
+   user["User input (CalculusApp): x^3 + sin(x)"]
+   user --> me["Math Engine: Parser + Tokenizer"]
+   me --> af["ASTFlattener: MathAST → SymExpr DAG"]
+   af --> sd["SymDiff → d/dx: 3x^2 + cos(x)"]
+   sd --> ss["SymSimplify (8-pass fixed-point)"]
+   ss --> sea["SymExprToAST: SymExpr → MathAST (Natural Display)"]
+   sea --> canvas["MathCanvas renders: 3x^2 + cos(x)"]
 ```
 
 ### CAS Pipeline (Integrals)
 
 ```mermaid
 flowchart TB
-   userInt["User input (CalculusApp, ∫dx mode):<br/>\"x · cos(x)\""]
-   userInt --> af2[ASTFlattener → SymExpr DAG]
-   af2 --> sint[SymIntegrate<br/>(Slagle) — table → linearity → u-sub → parts (LIATE)]
-   sint --> ss2[SymSimplify]
-   ss2 --> conv[SymExprToAST::convertIntegral()] 
-   conv --> canvas2[MathCanvas renders:<br/>x·sin(x) + cos(x) + C]
+   userInt["User input (CalculusApp, ∫dx mode): x · cos(x)"]
+   userInt --> af2["ASTFlattener → SymExpr DAG"]
+   af2 --> sint["SymIntegrate (Slagle): table → linearity → u-sub → parts (LIATE)"]
+   sint --> ss2["SymSimplify"]
+   ss2 --> conv["SymExprToAST::convertIntegral()"]
+   conv --> canvas2["MathCanvas renders: x·sin(x) + cos(x) + C"]
 ```
 
 ### Pro-CAS Components
