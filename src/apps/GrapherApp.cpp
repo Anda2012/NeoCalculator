@@ -36,54 +36,15 @@ static constexpr uint32_t COL_TB_TXT    = 0x333333;
 static constexpr uint32_t COL_TBL_HDR   = 0xFFB531;  // Table header (NumWorks yellow)
 static constexpr uint32_t COL_TBL_SEL   = 0xD6EAFF;
 
-// ── Graph plotting constants ────────────────────────────────────────────
-// Adaptive sampling worst case: INIT_SAMPLE_N * 2^ADAPT_DEPTH = 40 * 8 = 320
-// Using 512 as a conservative upper bound with safety margin.
-static constexpr int GRAPH_MAX_PTS = 512;   // Point buffer per function
-
 // ── Templates ───────────────────────────────────────────────────────────
 struct TemplateEntry {
     const char* text;     // Expression to insert
     const char* display;  // Display label
 };
 
-// ── Kandinsky legacy (to be migrated to GraphView) ──────────────────────
-struct PlotPt { int x, y; };  // Screen coordinate point
+// ── Kandinsky streaming constants ────────────────────────────────────────
 static constexpr int INIT_SAMPLE_N = 40;  // Initial samples
 static constexpr int ADAPT_DEPTH = 3;     // Adaptive refinement depth
-
-// Legacy function stubs — Phase 5 will move these to GraphView
-static uint16_t rgb888to565(uint32_t rgb) {
-    uint8_t r = (rgb >> 16) & 0xFF;
-    uint8_t g = (rgb >>  8) & 0xFF;
-    uint8_t b =  rgb        & 0xFF;
-    return (uint16_t)(((r >> 3) << 11) | ((g >> 2) << 5) | (b >> 3));
-}
-
-static void fastDrawLine(uint16_t* buf, int bufW, int bufH,
-                         int x0, int y0, int x1, int y1, uint16_t color) {
-    // Trivial Bresenham — will be moved to GraphView this phase
-    if (!buf || bufW <= 0 || bufH <= 0) return;
-    
-    // Early exit: both points outside the same edge
-    if ((x0 < 0 && x1 < 0) || (x0 >= bufW && x1 >= bufW) ||
-        (y0 < 0 && y1 < 0) || (y0 >= bufH && y1 >= bufH)) return;
-
-    int dx =  std::abs(x1 - x0);
-    int dy = -std::abs(y1 - y0);
-    int sx = (x0 < x1) ? 1 : -1;
-    int sy = (y0 < y1) ? 1 : -1;
-    int err = dx + dy;
-
-    for (;;) {
-        if ((unsigned)x0 < (unsigned)bufW && (unsigned)y0 < (unsigned)bufH)
-            buf[y0 * bufW + x0] = color;
-        if (x0 == x1 && y0 == y1) break;
-        int e2 = err * 2;
-        if (e2 >= dy) { err += dy; x0 += sx; }
-        if (e2 <= dx) { err += dx; y0 += sy; }
-    }
-}
 
 static const TemplateEntry TEMPLATES[] = {
     { "y=2*x+3",   "y = 2x + 3  (Linear)"     },
@@ -121,8 +82,7 @@ GrapherApp::GrapherApp()
     , _xMin(-10.0f), _xMax(10.0f), _yMin(-7.0f), _yMax(7.0f)
     , _traceX(0.0f), _traceFn(0), _plotDirty(true)
     , _tblRow(0), _tblStart(-5.0f), _tblStep(1.0f), _tblFuncIdx(0)
-    , _poiAsyncTimer(nullptr), _poiAsyncFi(-1), _poiAsyncStep(0)
-    , _poiAsyncYPrev(NAN), _poiAsyncYPrev2(NAN)
+    , _poiAsyncTimer(nullptr), _poiAsyncFi(-1)
 {
     for (int i = 0; i < 3; ++i) { _tabLabels[i] = nullptr; _tabPills[i] = nullptr; }
     for (int i = 0; i < MAX_FUNCS; ++i) {
@@ -1551,92 +1511,58 @@ float GrapherApp::evalAt(int idx, float x) {
 // Instead of storing points in an array, this draws segments in real-time.
 // Max recursion depth is ADAPT_DEPTH (3) — safe on ESP32 stack.
 // Signature: (app, fi, world_x0, world_y0, world_x1, world_y1, depth)
-void GrapherApp::adaptSegStream(GrapherApp* app, int fi,
-                                 float wx0, float wy0,
-                                 float wx1, float wy1,
-                                 int depth, uint32_t color)
+void GrapherApp::adaptSegStream(int fi,
+                                float wx0, float wy0,
+                                float wx1, float wy1,
+                                int depth, uint32_t color)
 {
-    static constexpr float ADAPT_THRESHOLD_PX = 2.0f;  // Deviation threshold in pixels
-
-    if (depth <= 0) return;
-
-    // Midpoint
-    float mwx = (wx0 + wx1) * 0.5f;
-    float mwy = app->evalAt(fi, mwx);
-    if (std::isnan(mwy) || std::isinf(mwy)) return;
-
-    // Convert to screen coordinates to check deviation
-    int sx0 = app->_view.worldToScreenX(wx0);
-    int sy0 = app->_view.worldToScreenY(wy0);
-    int sx1 = app->_view.worldToScreenX(wx1);
-    int sy1 = app->_view.worldToScreenY(wy1);
-    int msx = app->_view.worldToScreenX(mwx);
-    int msy = app->_view.worldToScreenY(mwy);
-
-    // Linear interpolation of screen y at the midpoint
-    int interpSy = (sy0 + sy1) / 2;
-
-    // If deviation exceeds threshold, recurse; otherwise, this segment is smooth enough
-    if (std::abs(msy - interpSy) > (int)ADAPT_THRESHOLD_PX) {
-        adaptSegStream(app, fi, wx0, wy0, mwx, mwy, depth - 1, color);
-        app->_view.drawFunctionSegment(mwx, mwy, wx1, wy1, color);
-        adaptSegStream(app, fi, mwx, mwy, wx1, wy1, depth - 1, color);
+    static constexpr float ADAPT_THRESHOLD_PX = 2.0f;
+    if (depth >= ADAPT_DEPTH) {
+        _view.drawFunctionSegment(wx0, wy0, wx1, wy1, color);
+        return;
     }
+
+    const float wxMid = (wx0 + wx1) * 0.5f;
+    const float wyMid = (float)evalAt(fi, wxMid);
+    if (std::isnan(wyMid) || std::isinf(wyMid)) return;
+
+    // Y-only screen-space deviation keeps sampling cheap and catches visible jaggies.
+    const int sy0 = _view.worldToScreenY((float)wy0);
+    const int sy1 = _view.worldToScreenY((float)wy1);
+    const int syMid = _view.worldToScreenY((float)wyMid);
+    const int syEst = (sy0 + sy1) / 2;
+
+    if (std::abs(syMid - syEst) > (int)ADAPT_THRESHOLD_PX) {
+        adaptSegStream(fi, wx0, wy0, wxMid, wyMid, depth + 1, color);
+        adaptSegStream(fi, wxMid, wyMid, wx1, wy1, depth + 1, color);
+        return;
+    }
+
+    _view.drawFunctionSegment(wx0, wy0, wx1, wy1, color);
 }
 
 // Sample function fi adaptively, streaming directly to the GraphView buffer.
 // No point array — all drawing happens in real-time.
 void GrapherApp::sampleFuncAdaptive(int fi, uint32_t color) {
-    static constexpr int INIT_SAMPLE_N = 40;  // Initial coarse samples
-    static constexpr int ADAPT_DEPTH = 3;     // Adaptive refinement depth
-
-    float xRange = _xMax - _xMin;
-    float yRange = _yMax - _yMin;
+    const float xRange = (float)(_xMax - _xMin);
+    const float yRange = (float)(_yMax - _yMin);
     if (xRange <= 0 || yRange <= 0) return;
+    const float step = xRange / (float)INIT_SAMPLE_N;
+    float wx0 = (float)_xMin;
+    float wy0 = (float)evalAt(fi, wx0);
+    bool prevOk = (!std::isnan(wy0) && !std::isinf(wy0));
 
-    // Coarse initial grid: sample at regular intervals
-    struct CoarsePt { float wx, wy; bool ok; };
-    static CoarsePt coarse[INIT_SAMPLE_N + 1];
-
-    float step = xRange / INIT_SAMPLE_N;
-    for (int i = 0; i <= INIT_SAMPLE_N; ++i) {
-        float wx = _xMin + i * step;
-        float wy = evalAt(fi, wx);
-        bool ok = !std::isnan(wy) && !std::isinf(wy);
-
-        // Off-screen clip: reject points far outside the viewport
-        if (ok && (wy < _yMin - (_yMax - _yMin) || wy > _yMax + (_yMax - _yMin))) {
-            ok = false;
+    for (int i = 1; i <= INIT_SAMPLE_N; ++i) {
+        const float wx1 = (i == INIT_SAMPLE_N) ? (float)_xMax : ((float)_xMin + step * (float)i);
+        const float wy1 = (float)evalAt(fi, wx1);
+        const bool currOk = (!std::isnan(wy1) && !std::isinf(wy1));
+        if (prevOk && currOk) {
+            adaptSegStream(fi, wx0, wy0, wx1, wy1, 0, color);
         }
-
-        coarse[i] = { wx, wy, ok };
-
-        // Yield CPU every 8 samples (avoid watchdog timeout)
+        wx0 = wx1;
+        wy0 = wy1;
+        prevOk = currOk;
         if ((i & 7) == 0) yield();
-    }
-
-    // Stitch coarse segments with adaptive refinement
-    bool prevOk = false;
-    for (int i = 0; i <= INIT_SAMPLE_N; ++i) {
-        if (!coarse[i].ok) {
-            prevOk = false;
-            continue;
-        }
-
-        if (!prevOk) {
-            // Start a new segment run — no need to "add" the first point,
-            // just mark that we're now in a valid region
-        } else {
-            // Refine and draw segment from coarse[i-1] to coarse[i]
-            _view.drawFunctionSegment(coarse[i - 1].wx, coarse[i - 1].wy,
-                                      coarse[i].wx, coarse[i].wy, color);
-
-            // Adaptive refinement: subdivide if needed
-            adaptSegStream(this, fi, coarse[i - 1].wx, coarse[i - 1].wy,
-                           coarse[i].wx, coarse[i].wy, ADAPT_DEPTH, color);
-        }
-
-        prevOk = true;
     }
 }
 
@@ -1650,24 +1576,19 @@ void GrapherApp::replot() {
     // Update GraphView's buffer dimensions and viewport
     _view.setViewport(_xMin, _xMax, _yMin, _yMax);
 
-    // ── 4-Step Replot Cycle ───────────────────────────────────────────────
-    // Step 1: Clear buffer and draw grid + axes
-    _view.redrawGridAndAxes();
+    // ── Phase B orchestrator: clear -> grid -> stream curves -> push ─────
+    _view.clearBuffer();
+    _view.drawGrid();
+    _view.drawAxes();
 
-    // Step 2: Draw all function curves (streaming directly to buffer)
     for (int f = 0; f < _numFuncs && f < MAX_FUNCS; ++f) {
-        if (!_funcs[f].valid) continue;
+        if (!_funcs[f].valid || !_funcs[f].visible) continue;
         sampleFuncAdaptive(f, _funcs[f].color);
     }
 
-    // Step 3: Draw integral shading if active (Phase 5 TODO)
-    // if (_shadingActive && _shadingFuncIdx >= 0 && _shadingFuncIdx < _numFuncs)
-    //     Draw shading via _view.drawAreaUnderCurve()
-
-    // Step 4: Force LVGL to refresh the canvas
     lv_image_set_src(_graphCanvas, &_graphImgDsc);
     lv_obj_invalidate(_graphCanvas);
-    lv_refr_now(NULL);  // Immediate refresh
+    lv_refr_now(NULL);
 
     updateInfoBar();
 }
@@ -1788,81 +1709,141 @@ void GrapherApp::autoFit() {
     _plotDirty = true;
 }
 
-// ── POI computation (roots, extrema, y-intercept) for snap-to-point ────
-void GrapherApp::computePOIs(int fi) {
-    _numPOIs = 0;
-    if (fi < 0 || fi >= _numFuncs || !_funcs[fi].valid) return;
+// ── POI computation (roots/extrema/intersections) for snap-to-point ─────
+void GrapherApp::appendPOIsForFunction(int fi) {
+    if (fi < 0 || fi >= _numFuncs || !_funcs[fi].valid || !_funcs[fi].visible) return;
 
     const int N = INIT_SAMPLE_N;
-    float step = (_xMax - _xMin) / N;
+    const float step = ((float)_xMax - (float)_xMin) / (float)N;
+    const float yDupEps = (((float)_yMax - (float)_yMin) / (float)N) * 0.1f;
+    if (step <= 0.0f) return;
 
-    // Y-intercept (x=0): only add if x=0 is in viewport
     if (_xMin <= 0.0f && _xMax >= 0.0f && _numPOIs < MAX_POIS) {
-        float y0 = evalAt(fi, 0.0f);
+        const float y0 = (float)evalAt(fi, 0.0f);
         if (!std::isnan(y0) && !std::isinf(y0)) {
-            auto& p = _pois[_numPOIs++];
-            p.x = 0.0f;
-            p.y = y0;
-            strncpy(p.label, "Intercept", sizeof(p.label) - 1);
-            p.label[sizeof(p.label) - 1] = '\0';
+            bool dup = false;
+            for (int k = 0; k < _numPOIs; ++k) {
+                if (fabsf(_pois[k].x) < step * 0.1f && fabsf(_pois[k].y - y0) < yDupEps) { dup = true; break; }
+            }
+            if (!dup && _numPOIs < MAX_POIS) {
+                auto& p = _pois[_numPOIs++];
+                p.x = 0.0f;
+                p.y = y0;
+                strncpy(p.label, "Intercept", sizeof(p.label) - 1);
+                p.label[sizeof(p.label) - 1] = '\0';
+            }
         }
     }
 
-    // Scan intervals for sign changes (roots) and local extrema
-    float yPrev = evalAt(fi, _xMin);
+    float yPrev = (float)evalAt(fi, (float)_xMin);
     float yPrev2 = yPrev;
     for (int i = 1; i <= N && _numPOIs < MAX_POIS - 2; ++i) {
-        float x1 = _xMin + i * step;
-        float y1 = evalAt(fi, x1);
-        if ((i & 7) == 0) yield();
+        const float x1 = (i == N) ? (float)_xMax : ((float)_xMin + (float)i * step);
+        const float y1 = (float)evalAt(fi, x1);
 
-        if (!std::isnan(yPrev) && !std::isnan(y1)) {
-            // Root: sign change → bisect to refine
+        if (!std::isnan(yPrev) && !std::isnan(y1) && !std::isinf(yPrev) && !std::isinf(y1)) {
             if (yPrev * y1 < 0.0f && _numPOIs < MAX_POIS) {
-                float lo = x1 - step, hi = x1;
+                float lo = x1 - step;
+                float hi = x1;
                 float ylo = yPrev;
                 for (int iter = 0; iter < BISECTION_ITER; ++iter) {
-                    float mid = (lo + hi) * 0.5f;
-                    float ym = evalAt(fi, mid);
-                    if (std::isnan(ym)) break;
-                    if (ym * ylo < 0.0f) { hi = mid; }
-                    else { lo = mid; ylo = ym; }
+                    const float mid = (lo + hi) * 0.5f;
+                    const float ym = (float)evalAt(fi, mid);
+                    if (std::isnan(ym) || std::isinf(ym)) break;
+                    if (ym * ylo < 0.0f) {
+                        hi = mid;
+                    } else {
+                        lo = mid;
+                        ylo = ym;
+                    }
                 }
-                float rx = (lo + hi) * 0.5f;
-                // Avoid duplicate near x=0 intercept
+                const float rx = (lo + hi) * 0.5f;
                 bool dup = false;
                 for (int k = 0; k < _numPOIs; ++k) {
                     if (fabsf(_pois[k].x - rx) < step * 0.1f) { dup = true; break; }
                 }
-                if (!dup) {
+                if (!dup && _numPOIs < MAX_POIS) {
                     auto& p = _pois[_numPOIs++];
                     p.x = rx; p.y = 0.0f;
                     strncpy(p.label, "Root", sizeof(p.label) - 1);
                     p.label[sizeof(p.label) - 1] = '\0';
                 }
             }
-            // Extremum: midpoint higher/lower than both endpoints
-            if (i >= 2 && !std::isnan(yPrev2)) {
-                float xm = x1 - step;
-                bool isMin = (yPrev < yPrev2) && (yPrev < y1);
-                bool isMax = (yPrev > yPrev2) && (yPrev > y1);
-                if ((isMin || isMax) && _numPOIs < MAX_POIS) {
+
+            if (i >= 2 && !std::isnan(yPrev2) && !std::isinf(yPrev2) && _numPOIs < MAX_POIS) {
+                const float xm = x1 - step;
+                const bool isMin = (yPrev < yPrev2) && (yPrev < y1);
+                const bool isMax = (yPrev > yPrev2) && (yPrev > y1);
+                if (isMin || isMax) {
                     bool dup = false;
                     for (int k = 0; k < _numPOIs; ++k) {
                         if (fabsf(_pois[k].x - xm) < step * 0.1f) { dup = true; break; }
                     }
-                    if (!dup) {
+                    if (!dup && _numPOIs < MAX_POIS) {
                         auto& p = _pois[_numPOIs++];
-                        p.x = xm; p.y = yPrev;
+                        p.x = xm;
+                        p.y = yPrev;
                         strncpy(p.label, isMin ? "Min" : "Max", sizeof(p.label) - 1);
                         p.label[sizeof(p.label) - 1] = '\0';
                     }
                 }
             }
         }
+
         yPrev2 = yPrev;
         yPrev = y1;
+        if ((i & 7) == 0) yield();
     }
+
+    for (int j = 0; j < fi && _numPOIs < MAX_POIS; ++j) {
+        if (!_funcs[j].valid) continue;
+
+        float prevDiff = (float)evalAt(fi, (float)_xMin) - (float)evalAt(j, (float)_xMin);
+        for (int i = 1; i <= N && _numPOIs < MAX_POIS; ++i) {
+            const float x1 = (i == N) ? (float)_xMax : ((float)_xMin + (float)i * step);
+            const float diff = (float)evalAt(fi, x1) - (float)evalAt(j, x1);
+            if (std::isnan(prevDiff) || std::isnan(diff) || std::isinf(prevDiff) || std::isinf(diff)) {
+                prevDiff = diff;
+                continue;
+            }
+            if (prevDiff * diff < 0.0f) {
+                float lo = x1 - step;
+                float hi = x1;
+                float dlo = prevDiff;
+                for (int iter = 0; iter < BISECTION_ITER; ++iter) {
+                    const float mid = (lo + hi) * 0.5f;
+                    const float dmid = (float)evalAt(fi, mid) - (float)evalAt(j, mid);
+                    if (std::isnan(dmid) || std::isinf(dmid)) break;
+                    if (dmid * dlo < 0.0f) {
+                        hi = mid;
+                    } else {
+                        lo = mid;
+                        dlo = dmid;
+                    }
+                }
+                const float ix = (lo + hi) * 0.5f;
+                const float iy = (float)evalAt(fi, ix);
+                bool dup = false;
+                for (int k = 0; k < _numPOIs; ++k) {
+                    if (fabsf(_pois[k].x - ix) < step * 0.1f) { dup = true; break; }
+                }
+                if (!dup && !std::isnan(iy) && !std::isinf(iy) && _numPOIs < MAX_POIS) {
+                    auto& p = _pois[_numPOIs++];
+                    p.x = ix;
+                    p.y = iy;
+                    strncpy(p.label, "Intersection", sizeof(p.label) - 1);
+                    p.label[sizeof(p.label) - 1] = '\0';
+                }
+            }
+            prevDiff = diff;
+            if ((i & 7) == 0) yield();
+        }
+    }
+}
+
+void GrapherApp::computePOIs(int fi) {
+    _numPOIs = 0;
+    startAsyncPOI(fi);
 }
 
 // ── Snap cursor to nearest POI if within 5 screen pixels ────────────────
@@ -2509,58 +2490,38 @@ void GrapherApp::openCalcMenu() {
 // ═══════════════════════════════════════════════════════════════════════
 
 void GrapherApp::startAsyncPOI(int fi) {
-    // Start POI computation for all functions (work-sliced over multiple ticks)
-    // If specific function given, start with it; otherwise start with 0
-    if (fi < 0) fi = 0;
+    // Start POI computation for all functions, one function per timer tick.
+    if (fi < 0 || fi >= _numFuncs) fi = 0;
 
-    // Stop any existing async POI timer
     if (_poiAsyncTimer) {
         lv_timer_delete(_poiAsyncTimer);
         _poiAsyncTimer = nullptr;
     }
 
-    // Initialize async state: we'll process functions sequentially
     _poiAsyncFi = fi;
-    _poiAsyncStep = 0;
-    _poiAsyncYPrev = NAN;
-    _poiAsyncYPrev2 = NAN;
-    _numPOIs = 0;  // Clear POI accumulator
+    _numPOIs = 0;
 
-    // Create timer that ticks every 300ms to compute POI for the next function
-    _poiAsyncTimer = lv_timer_create(poiAsyncTimerCb, 300, (void*)this);
+    // 10ms slicing keeps UI responsive while progressively adding POIs.
+    _poiAsyncTimer = lv_timer_create(poiAsyncTimerCb, 10, (void*)this);
 }
 
 void GrapherApp::poiAsyncTimerCb(lv_timer_t* t) {
     GrapherApp* app = (GrapherApp*)lv_timer_get_user_data(t);
     if (!app) return;
 
-    // Work-sliced POI computation: process one function per timer tick
-    int fi = app->_poiAsyncFi;
-    if (fi >= 0 && fi < app->_numFuncs && app->_funcs[fi].valid) {
-        // Compute POIs for this function
-        // Each invocation processes one function's POIs
-        
-        // Simple approach: compute all POIs for this function now
-        // For more fine-grained slicing, we could subdivide further:
-        // - Count = regions processed per tick (e.g., 5 slices of 8 samples each)
-        // - Update _poiAsyncStep to track progress
-        
-        // Accumulate POIs into the POI array
-        if (app->_numPOIs == 0) {
-            app->computePOIs(fi);  // First call clears and populates
-        }
-    }
-
-    // Move to next function if current one is done
-    app->_poiAsyncFi++;
-
-    // Stop when all functions have been processed
-    if (app->_poiAsyncFi >= app->_numFuncs) {
+    if (app->_poiAsyncFi >= app->_numFuncs || app->_numPOIs >= MAX_POIS) {
         lv_timer_delete(t);
         app->_poiAsyncTimer = nullptr;
         app->_poiAsyncFi = -1;
-        // POI computation complete — cursor snapping can now use the POIs
-        app->_plotDirty = true;  // Trigger redraw to show POI markers
+        app->_plotDirty = true;
+        return;
+    }
+
+    const int fi = app->_poiAsyncFi;
+    app->_poiAsyncFi++;
+    if (fi >= 0 && fi < app->_numFuncs && app->_funcs[fi].valid && app->_funcs[fi].visible) {
+        app->appendPOIsForFunction(fi);
+        app->_plotDirty = true;
     }
 }
 

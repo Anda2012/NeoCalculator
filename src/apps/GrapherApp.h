@@ -60,7 +60,6 @@ private:
     static constexpr int TPL_LOAD_INTERVAL_MS = 30;  // Lazy template load interval
     static constexpr int MAX_POIS     = 20;   // Max pre-computed points of interest (roots + intersections)
     static constexpr int BISECTION_ITER = 25; // Bisection iterations for root/POI refinement
-    static constexpr int ASYNC_POI_STEPS_PER_TICK = 4; // Scan steps computed per LVGL timer tick
     static constexpr float POI_SNAP_THRESHOLD_PX = 5.0f; // Magnetic snap radius in screen pixels
     static constexpr int TBL_HDR_H    = 22;   // Sticky table header height
 
@@ -279,19 +278,17 @@ private:
     // ── Async POI internal state ──────────────────────────────────────
     lv_timer_t* _poiAsyncTimer;
     int         _poiAsyncFi;
-    int         _poiAsyncStep;
-    float       _poiAsyncYPrev;
-    float       _poiAsyncYPrev2;
 
     // ── Table helpers ────────────────────────────────────────────────
     void rebuildTable();
 
     // ── Math ─────────────────────────────────────────────────────────
     float evalAt(int funcIdx, float x);
+    void appendPOIsForFunction(int funcIdx);
 
     // ── Adaptive sampling (streaming directly to GraphView buffer) ────
     void sampleFuncAdaptive(int fi, uint32_t color);
-    void adaptSegStream(GrapherApp* app, int fi,
+    void adaptSegStream(int fi,
                         float wx0, float wy0,
                         float wx1, float wy1,
                         int depth, uint32_t color);

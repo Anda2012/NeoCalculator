@@ -45,6 +45,13 @@ public:
     /// Clear buffer to white and redraw grid + axes
     void redrawGridAndAxes();
 
+    /// Clear buffer to white
+    void clear() { clearBuffer(); }
+
+    /// Rasterize grid lines and axes
+    void drawGrid();
+    void drawAxes();
+
     /// Clear buffer to white (does NOT redraw grid/axes)
     void clearBuffer();
 
@@ -94,10 +101,6 @@ private:
     /// Bresenham line into buffer with clipping
     void fastDrawLine(int x0, int y0, int x1, int y1, uint16_t color);
 
-    /// Rasterize grid lines and axes
-    void drawGrid();
-    void drawAxes();
 };
 
 } // namespace grapher
-
