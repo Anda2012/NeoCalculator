@@ -45,6 +45,24 @@ struct TemplateEntry {
 // ── Kandinsky streaming constants ────────────────────────────────────────
 static constexpr int INIT_SAMPLE_N = 40;  // Initial samples
 static constexpr int ADAPT_DEPTH = 3;     // Adaptive refinement depth
+static constexpr float TANGENT_REDRAW_THRESHOLD_PIXELS = 0.25f;
+static constexpr float TANGENT_FD_STEP_RATIO = 0.001f;
+static constexpr int RGB565_R_SHIFT = 11;
+static constexpr int RGB565_G_SHIFT = 5;
+static constexpr int RGB565_R_MASK = 0x1F;
+static constexpr int RGB565_G_MASK = 0x3F;
+static constexpr int RGB565_B_MASK = 0x1F;
+
+static inline uint16_t toRgb565(uint32_t rgb) {
+    const uint16_t r = (uint16_t)((rgb >> 19) & RGB565_R_MASK);
+    const uint16_t g = (uint16_t)((rgb >> 10) & RGB565_G_MASK);
+    const uint16_t b = (uint16_t)((rgb >> 3) & RGB565_B_MASK);
+    return (uint16_t)((r << RGB565_R_SHIFT) | (g << RGB565_G_SHIFT) | b);
+}
+
+static inline bool useStipplePixel(int x, int y) {
+    return ((x + y) & 1) == 0;
+}
 
 static const TemplateEntry TEMPLATES[] = {
     { "y=2*x+3",   "y = 2x + 3  (Linear)"     },
@@ -1596,7 +1614,7 @@ void GrapherApp::replot() {
         drawTangentOverlay(_tangentFuncIdx, _tangentX);
     }
     for (int i = 0; i < _numPOIs; ++i) {
-        if (strncmp(_pois[i].label, "Intersection", 12) == 0) {
+        if (_pois[i].type == POIType::Intersection) {
             _view.drawIntersectionMarker(_pois[i].x, _pois[i].y, 0xAA00CC);
         }
     }
@@ -1745,6 +1763,7 @@ void GrapherApp::appendPOIsForFunction(int fi) {
                 auto& p = _pois[_numPOIs++];
                 p.x = 0.0f;
                 p.y = y0;
+                p.type = POIType::Intercept;
                 strncpy(p.label, "Intercept", sizeof(p.label) - 1);
                 p.label[sizeof(p.label) - 1] = '\0';
             }
@@ -1781,6 +1800,7 @@ void GrapherApp::appendPOIsForFunction(int fi) {
                 if (!dup && _numPOIs < MAX_POIS) {
                     auto& p = _pois[_numPOIs++];
                     p.x = rx; p.y = 0.0f;
+                    p.type = POIType::Root;
                     strncpy(p.label, "Root", sizeof(p.label) - 1);
                     p.label[sizeof(p.label) - 1] = '\0';
                 }
@@ -1799,6 +1819,7 @@ void GrapherApp::appendPOIsForFunction(int fi) {
                         auto& p = _pois[_numPOIs++];
                         p.x = xm;
                         p.y = yPrev;
+                        p.type = isMin ? POIType::Min : POIType::Max;
                         strncpy(p.label, isMin ? "Min" : "Max", sizeof(p.label) - 1);
                         p.label[sizeof(p.label) - 1] = '\0';
                     }
@@ -1847,6 +1868,7 @@ void GrapherApp::appendPOIsForFunction(int fi) {
                     auto& p = _pois[_numPOIs++];
                     p.x = ix;
                     p.y = iy;
+                    p.type = POIType::Intersection;
                     strncpy(p.label, "Intersection", sizeof(p.label) - 1);
                     p.label[sizeof(p.label) - 1] = '\0';
                 }
@@ -2468,8 +2490,9 @@ void GrapherApp::handleGraphTrace(const KeyEvent& ev) {
     default:
         break;
     }
+    const float tangentRedrawDx = ((_xMax - _xMin) / SCREEN_W) * TANGENT_REDRAW_THRESHOLD_PIXELS;
     if (!didSyncViewport && _tangentActive &&
-        (_tangentFuncIdx != _traceFn || fabsf(_tangentX - _traceX) > 1e-6f)) {
+        (_tangentFuncIdx != _traceFn || fabsf(_tangentX - _traceX) > tangentRedrawDx)) {
         _tangentFuncIdx = _traceFn;
         _tangentX = _traceX;
         _plotDirty = true;
@@ -2794,7 +2817,7 @@ void GrapherApp::executeCalcOption(int option) {
 // ═══════════════════════════════════════════════════════════════════════
 
 void GrapherApp::drawIntegralShading(int funcIdx, float shadeXMin, float shadeXMax) {
-    if (!_graphArea || funcIdx < 0 || funcIdx >= _numFuncs || !_funcs[funcIdx].valid)
+    if (!_graphBuf || funcIdx < 0 || funcIdx >= _numFuncs || !_funcs[funcIdx].valid)
         return;
 
     int areaW = GRAPH_CANVAS_W;
@@ -2817,9 +2840,7 @@ void GrapherApp::drawIntegralShading(int funcIdx, float shadeXMin, float shadeXM
     const int right = std::max(sx0, sx1);
 
     const int yAxisPx = _view.worldToScreenY(0.0f);
-    const uint16_t shade565 = (uint16_t)(((_funcs[funcIdx].color >> 19) << 11) |
-                                         (((_funcs[funcIdx].color >> 10) & 0x3F) << 5) |
-                                         ((_funcs[funcIdx].color >> 3) & 0x1F));
+    const uint16_t shade565 = toRgb565(_funcs[funcIdx].color);
 
     for (int px = left; px <= right; ++px) {
         const float wx = (float)_xMin + ((float)px / (float)areaW) * xRange;
@@ -2838,7 +2859,7 @@ void GrapherApp::drawIntegralShading(int funcIdx, float shadeXMin, float shadeXM
         const int top = std::min(sy, y0);
         const int bot = std::max(sy, y0);
         for (int py = top; py <= bot; ++py) {
-            if (((px + py) & 1) != 0) continue;  // checkerboard stipple
+            if (!useStipplePixel(px, py)) continue;  // checkerboard stipple
             _graphBuf[py * areaW + px] = shade565;
         }
     }
@@ -2862,14 +2883,15 @@ void GrapherApp::drawTangentOverlay(int funcIdx, float xTarget) {
     if (std::isnan(yTarget) || std::isinf(yTarget)) return;
 
     const float xRange = (float)(_xMax - _xMin);
-    const float h = xRange / (float)GRAPH_CANVAS_W;
+    const float hPixel = xRange / (float)GRAPH_CANVAS_W;
+    const float h = std::max(hPixel, xRange * TANGENT_FD_STEP_RATIO);  // finite-difference step size
     if (h <= 0.0f) return;
 
     const float yPlus = (float)evalAt(funcIdx, xTarget + h);
     const float yMinus = (float)evalAt(funcIdx, xTarget - h);
     if (std::isnan(yPlus) || std::isinf(yPlus) || std::isnan(yMinus) || std::isinf(yMinus)) return;
 
-    const float derivative = (yPlus - yMinus) / (2.0f * h);
+    const float derivative = (yPlus - yMinus) / (2.0f * h);  // Central difference
     if (std::isnan(derivative) || std::isinf(derivative)) return;
     const float xLeft = (float)_xMin;
     const float xRight = (float)_xMax;

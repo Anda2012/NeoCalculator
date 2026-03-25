@@ -82,9 +82,18 @@ private:
     // ── Per-function slot (MVC: Model data, stored here for UI access) ──
     using FuncSlot = grapher::CartesianFunction;
 
+    enum class POIType : uint8_t {
+        Root,
+        Min,
+        Max,
+        Intercept,
+        Intersection
+    };
+
     // ── Point of Interest (for snap-to-POI) ──────────────────────────
     struct POI {
         float x, y;
+        POIType type;
         char  label[22];   // "Root", "Min", "Max", "Intercept", "Intersection"
     };
 
@@ -155,6 +164,7 @@ private:
 
     // ── Calculate menu (floating overlay) ────────────────────────────
     static constexpr int CALC_MENU_ITEMS = 6;  // +1 for "Draw Tangent"
+    static_assert(CALC_MENU_ITEMS == 6, "CALC_MENU_ITEMS must match CALC_MENU_LABELS");
     lv_obj_t*       _calcMenu;          // Floating menu container (nullptr when closed)
     lv_obj_t*       _calcMenuRows[CALC_MENU_ITEMS]; // Menu option labels
     int             _calcMenuIdx;       // Currently highlighted menu item
