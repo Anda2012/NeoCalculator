@@ -45,6 +45,24 @@ struct TemplateEntry {
 // ── Kandinsky streaming constants ────────────────────────────────────────
 static constexpr int INIT_SAMPLE_N = 40;  // Initial samples
 static constexpr int ADAPT_DEPTH = 3;     // Adaptive refinement depth
+static constexpr float TANGENT_REDRAW_THRESHOLD_PIXELS = 0.25f;
+static constexpr float TANGENT_FD_STEP_RATIO = 0.001f;
+static constexpr int RGB565_R_SHIFT = 11;
+static constexpr int RGB565_G_SHIFT = 5;
+static constexpr int RGB565_R_MASK = 0x1F;
+static constexpr int RGB565_G_MASK = 0x3F;
+static constexpr int RGB565_B_MASK = 0x1F;
+
+static inline uint16_t toRgb565(uint32_t rgb) {
+    const uint16_t r = (uint16_t)((rgb >> 19) & RGB565_R_MASK);
+    const uint16_t g = (uint16_t)((rgb >> 10) & RGB565_G_MASK);
+    const uint16_t b = (uint16_t)((rgb >> 3) & RGB565_B_MASK);
+    return (uint16_t)((r << RGB565_R_SHIFT) | (g << RGB565_G_SHIFT) | b);
+}
+
+static inline bool useStipplePixel(int x, int y) {
+    return ((x + y) & 1) == 0;
+}
 
 static const TemplateEntry TEMPLATES[] = {
     { "y=2*x+3",   "y = 2x + 3  (Linear)"     },
@@ -107,6 +125,7 @@ GrapherApp::GrapherApp()
     for (int i = 0; i < 6; ++i) { _tplRows[i] = nullptr; }
     _numPOIs = 0;
     _snappedToPOI = false;
+    _snappedPOIIdx = -1;
     _snapEscapeCount = 0;
     _modeBadge = nullptr;
 }
@@ -735,6 +754,7 @@ void GrapherApp::switchTab(Tab t) {
                 _traceX = (_xMin + _xMax) / 2.0f;
                 _plotDirty = true;
                 _snappedToPOI = false;
+                _snappedPOIIdx = -1;
                 _snapEscapeCount = 0;
             }
         } else {
@@ -747,6 +767,7 @@ void GrapherApp::switchTab(Tab t) {
             _traceX = (_xMin + _xMax) / 2.0f;
             _plotDirty = true;
             _snappedToPOI = false;
+            _snappedPOIIdx = -1;
             _snapEscapeCount = 0;
             replot();
             // Pre-compute POIs for snap-to-point
@@ -1586,6 +1607,18 @@ void GrapherApp::replot() {
         sampleFuncAdaptive(f, _funcs[f].color);
     }
 
+    if (_shadingActive) {
+        drawIntegralShading(_shadingFuncIdx, _shadingX0, _shadingX1);
+    }
+    if (_tangentActive) {
+        drawTangentOverlay(_tangentFuncIdx, _tangentX);
+    }
+    for (int i = 0; i < _numPOIs; ++i) {
+        if (_pois[i].type == POIType::Intersection) {
+            _view.drawIntersectionMarker(_pois[i].x, _pois[i].y, 0xAA00CC);
+        }
+    }
+
     lv_image_set_src(_graphCanvas, &_graphImgDsc);
     lv_obj_invalidate(_graphCanvas);
     lv_refr_now(NULL);
@@ -1643,13 +1676,9 @@ void GrapherApp::drawTraceCursor() {
 
     char pillBuf[80];
     // Check if we're snapped to a POI
-    const char* poiLabel = nullptr;
-    for (int i = 0; i < _numPOIs; ++i) {
-        if (fabsf(_traceX - _pois[i].x) < 1e-4f) {
-            poiLabel = _pois[i].label;
-            break;
-        }
-    }
+    const char* poiLabel = (_snappedToPOI && _snappedPOIIdx >= 0 && _snappedPOIIdx < _numPOIs)
+        ? _pois[_snappedPOIIdx].label
+        : nullptr;
     if (poiLabel) {
         snprintf(pillBuf, sizeof(pillBuf), "%s: (%.3f, %.3f)", poiLabel, (double)_traceX, wy);
     } else {
@@ -1663,7 +1692,12 @@ void GrapherApp::updateInfoBar() {
     char buf[64];
     if (_grMode == GrMode::TRACE && _traceFn >= 0 && _traceFn < _numFuncs) {
         float y = evalAt(_traceFn, _traceX);
-        snprintf(buf, sizeof(buf), "Trace: x=%.3f  y=%.3f", (double)_traceX, (double)y);
+        if (_snappedToPOI && _snappedPOIIdx >= 0 && _snappedPOIIdx < _numPOIs) {
+            snprintf(buf, sizeof(buf), "Trace [%s]: x=%.3f  y=%.3f",
+                     _pois[_snappedPOIIdx].label, (double)_traceX, (double)y);
+        } else {
+            snprintf(buf, sizeof(buf), "Trace: x=%.3f  y=%.3f", (double)_traceX, (double)y);
+        }
     } else {
         snprintf(buf, sizeof(buf), "x:[%.2g,%.2g] y:[%.2g,%.2g]  ENTER=trace",
                  (double)_xMin, (double)_xMax, (double)_yMin, (double)_yMax);
@@ -1729,6 +1763,7 @@ void GrapherApp::appendPOIsForFunction(int fi) {
                 auto& p = _pois[_numPOIs++];
                 p.x = 0.0f;
                 p.y = y0;
+                p.type = POIType::Intercept;
                 strncpy(p.label, "Intercept", sizeof(p.label) - 1);
                 p.label[sizeof(p.label) - 1] = '\0';
             }
@@ -1765,6 +1800,7 @@ void GrapherApp::appendPOIsForFunction(int fi) {
                 if (!dup && _numPOIs < MAX_POIS) {
                     auto& p = _pois[_numPOIs++];
                     p.x = rx; p.y = 0.0f;
+                    p.type = POIType::Root;
                     strncpy(p.label, "Root", sizeof(p.label) - 1);
                     p.label[sizeof(p.label) - 1] = '\0';
                 }
@@ -1783,6 +1819,7 @@ void GrapherApp::appendPOIsForFunction(int fi) {
                         auto& p = _pois[_numPOIs++];
                         p.x = xm;
                         p.y = yPrev;
+                        p.type = isMin ? POIType::Min : POIType::Max;
                         strncpy(p.label, isMin ? "Min" : "Max", sizeof(p.label) - 1);
                         p.label[sizeof(p.label) - 1] = '\0';
                     }
@@ -1831,6 +1868,7 @@ void GrapherApp::appendPOIsForFunction(int fi) {
                     auto& p = _pois[_numPOIs++];
                     p.x = ix;
                     p.y = iy;
+                    p.type = POIType::Intersection;
                     strncpy(p.label, "Intersection", sizeof(p.label) - 1);
                     p.label[sizeof(p.label) - 1] = '\0';
                 }
@@ -1846,25 +1884,46 @@ void GrapherApp::computePOIs(int fi) {
     startAsyncPOI(fi);
 }
 
-// ── Snap cursor to nearest POI if within 5 screen pixels ────────────────
+// ── Snap cursor to nearest POI if within threshold pixels ────────────────
 void GrapherApp::snapToPOI() {
     // Skip snap entirely during escape mode
     if (_snapEscapeCount > 0) return;
 
-    if (_numPOIs == 0 || _traceFn < 0) return;
-    int areaW = SCREEN_W;
-    float xRange = _xMax - _xMin;
-    if (xRange <= 0) return;
-    // Convert 5 pixels to world-space distance
-    float snapDist = POI_SNAP_THRESHOLD_PX / areaW * xRange;
+    if (_numPOIs == 0 || _traceFn < 0) {
+        _snappedToPOI = false;
+        _snappedPOIIdx = -1;
+        return;
+    }
+    const float traceY = evalAt(_traceFn, _traceX);
+    if (std::isnan(traceY) || std::isinf(traceY)) {
+        _snappedToPOI = false;
+        _snappedPOIIdx = -1;
+        return;
+    }
+    const int traceSx = _view.worldToScreenX(_traceX);
+    const int traceSy = _view.worldToScreenY(traceY);
+    const float snapPx2 = POI_SNAP_THRESHOLD_PX * POI_SNAP_THRESHOLD_PX;
+    float bestDist = snapPx2 + 1.0f;
+    int bestIdx = -1;
     for (int i = 0; i < _numPOIs; ++i) {
-        if (fabsf(_traceX - _pois[i].x) <= snapDist) {
-            _traceX = _pois[i].x;
-            _snappedToPOI = true;
-            return;
+        const int poiSx = _view.worldToScreenX(_pois[i].x);
+        const int poiSy = _view.worldToScreenY(_pois[i].y);
+        const float dx = (float)(traceSx - poiSx);
+        const float dy = (float)(traceSy - poiSy);
+        const float dist = dx * dx + dy * dy;
+        if (dist <= snapPx2 && dist < bestDist) {
+            bestDist = dist;
+            bestIdx = i;
         }
     }
-    _snappedToPOI = false;
+    if (bestIdx >= 0) {
+        _traceX = _pois[bestIdx].x;
+        _snappedToPOI = true;
+        _snappedPOIIdx = bestIdx;
+    } else {
+        _snappedToPOI = false;
+        _snappedPOIIdx = -1;
+    }
 }
 
 // ── Strict 1:1 locked camera: viewport center is always (traceX, traceY) ─
@@ -2260,6 +2319,7 @@ void GrapherApp::handleToolbar(const KeyEvent& ev) {
             _grMode = GrMode::TRACE;
             _traceX = (_xMin + _xMax) / 2.0f;
             _snappedToPOI = false;
+            _snappedPOIIdx = -1;
             _snapEscapeCount = 0;
             // Pick first valid function
             _traceFn = -1;
@@ -2311,6 +2371,9 @@ void GrapherApp::handleGraphNav(const KeyEvent& ev) {
         // Toggle Trace Mode
         _grMode = GrMode::TRACE;
         _traceX = (_xMin + _xMax) / 2.0f;
+        _snappedToPOI = false;
+        _snappedPOIIdx = -1;
+        _snapEscapeCount = 0;
         _traceFn = -1;
         for (int i = 0; i < _numFuncs; ++i) {
             if (_funcs[i].valid) { _traceFn = i; break; }
@@ -2336,6 +2399,7 @@ void GrapherApp::handleGraphNav(const KeyEvent& ev) {
 // ── Graph trace keys ────────────────────────────────────────────────────
 void GrapherApp::handleGraphTrace(const KeyEvent& ev) {
     float step = (_xMax - _xMin) / SCREEN_W;  // Pixel-precise cursor movement
+    bool didSyncViewport = false;
 
     switch (ev.code) {
     case KeyCode::LEFT: {
@@ -2346,6 +2410,7 @@ void GrapherApp::handleGraphTrace(const KeyEvent& ev) {
         if (wasSnapped) {
             // "Escape Force": break snap, ignore POI for next 10 moves
             _snappedToPOI = false;
+            _snappedPOIIdx = -1;
             _snapEscapeCount = 10;
         } else if (_snapEscapeCount > 0) {
             --_snapEscapeCount;
@@ -2353,6 +2418,7 @@ void GrapherApp::handleGraphTrace(const KeyEvent& ev) {
             snapToPOI();
         }
         syncViewportToCursor();
+        didSyncViewport = true;
         break;
     }
     case KeyCode::RIGHT: {
@@ -2362,6 +2428,7 @@ void GrapherApp::handleGraphTrace(const KeyEvent& ev) {
 
         if (wasSnapped) {
             _snappedToPOI = false;
+            _snappedPOIIdx = -1;
             _snapEscapeCount = 10;
         } else if (_snapEscapeCount > 0) {
             --_snapEscapeCount;
@@ -2369,6 +2436,7 @@ void GrapherApp::handleGraphTrace(const KeyEvent& ev) {
             snapToPOI();
         }
         syncViewportToCursor();
+        didSyncViewport = true;
         break;
     }
     case KeyCode::UP:
@@ -2376,11 +2444,29 @@ void GrapherApp::handleGraphTrace(const KeyEvent& ev) {
         for (int i = _traceFn + 1; i < _numFuncs; ++i) {
             if (_funcs[i].valid) { _traceFn = i; break; }
         }
+        if (_traceFn >= 0) computePOIs(_traceFn);
+        _snappedToPOI = false;
+        _snappedPOIIdx = -1;
+        if (_tangentActive && _traceFn >= 0) {
+            _tangentFuncIdx = _traceFn;
+            _tangentX = _traceX;
+            _plotDirty = true;
+            replot();
+        }
         break;
     case KeyCode::DOWN:
         // Switch to prev function (keep same X)
         for (int i = _traceFn - 1; i >= 0; --i) {
             if (_funcs[i].valid) { _traceFn = i; break; }
+        }
+        if (_traceFn >= 0) computePOIs(_traceFn);
+        _snappedToPOI = false;
+        _snappedPOIIdx = -1;
+        if (_tangentActive && _traceFn >= 0) {
+            _tangentFuncIdx = _traceFn;
+            _tangentX = _traceX;
+            _plotDirty = true;
+            replot();
         }
         break;
     case KeyCode::ENTER:
@@ -2390,17 +2476,27 @@ void GrapherApp::handleGraphTrace(const KeyEvent& ev) {
     case KeyCode::AC:
         // Exit trace mode — hide crosshair + pill, return to toolbar
         clearIntegralShading();
+        clearTangent();
         if (_traceDot)   lv_obj_add_flag(_traceDot, LV_OBJ_FLAG_HIDDEN);
         if (_traceLineH) lv_obj_add_flag(_traceLineH, LV_OBJ_FLAG_HIDDEN);
         if (_traceLineV) lv_obj_add_flag(_traceLineV, LV_OBJ_FLAG_HIDDEN);
         if (_tracePill)  lv_obj_add_flag(_tracePill, LV_OBJ_FLAG_HIDDEN);
         _grMode = GrMode::NAVIGATE;  // AC from trace → pan mode
         _snappedToPOI = false;
+        _snappedPOIIdx = -1;
         _snapEscapeCount = 0;
         updateInfoBar();
         return;
     default:
         break;
+    }
+    const float tangentRedrawDx = ((_xMax - _xMin) / SCREEN_W) * TANGENT_REDRAW_THRESHOLD_PIXELS;
+    if (!didSyncViewport && _tangentActive &&
+        (_tangentFuncIdx != _traceFn || fabsf(_tangentX - _traceX) > tangentRedrawDx)) {
+        _tangentFuncIdx = _traceFn;
+        _tangentX = _traceX;
+        _plotDirty = true;
+        replot();
     }
     drawTraceCursor();
     updateInfoBar();
@@ -2455,6 +2551,7 @@ static const char* CALC_MENU_LABELS[] = {
     "Find Maximum",
     "Find Intersection",
     "Calculate Integral",
+    "Draw Tangent",
 };
 
 void GrapherApp::openCalcMenu() {
@@ -2483,6 +2580,28 @@ void GrapherApp::openCalcMenu() {
     lv_obj_remove_flag(_calcMenu, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_set_style_layout(_calcMenu, LV_LAYOUT_FLEX, LV_PART_MAIN);
     lv_obj_set_flex_flow(_calcMenu, LV_FLEX_FLOW_COLUMN);
+
+    for (int i = 0; i < CALC_MENU_ITEMS; ++i) {
+        lv_obj_t* row = lv_obj_create(_calcMenu);
+        _calcMenuRows[i] = row;
+        lv_obj_set_width(row, lv_pct(100));
+        lv_obj_set_height(row, 24);
+        lv_obj_set_style_border_width(row, 0, LV_PART_MAIN);
+        lv_obj_set_style_radius(row, 4, LV_PART_MAIN);
+        lv_obj_set_style_pad_left(row, 8, LV_PART_MAIN);
+        lv_obj_set_style_pad_right(row, 8, LV_PART_MAIN);
+        lv_obj_set_style_pad_top(row, 0, LV_PART_MAIN);
+        lv_obj_set_style_pad_bottom(row, 0, LV_PART_MAIN);
+        lv_obj_set_style_bg_color(row, lv_color_hex(i == 0 ? COL_BTN_BG : 0xFFFFFF), LV_PART_MAIN);
+        lv_obj_set_style_bg_opa(row, LV_OPA_COVER, LV_PART_MAIN);
+        lv_obj_remove_flag(row, LV_OBJ_FLAG_SCROLLABLE);
+
+        lv_obj_t* lbl = lv_label_create(row);
+        lv_label_set_text(lbl, CALC_MENU_LABELS[i]);
+        lv_obj_center(lbl);
+        lv_obj_set_style_text_color(lbl, lv_color_hex(i == 0 ? 0xFFFFFF : 0x333333), LV_PART_MAIN);
+        lv_obj_set_style_text_font(lbl, &lv_font_montserrat_12, LV_PART_MAIN);
+    }
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -2651,7 +2770,17 @@ void GrapherApp::executeCalcOption(int option) {
             snprintf(pillBuf, sizeof(pillBuf), "Area = %.4f", res.y);
             // Draw area shading
             drawIntegralShading(_traceFn, _xMin, _xMax);
+            _plotDirty = true;
+            replot();
         }
+        break;
+    }
+    case 5: { // Draw Tangent
+        drawTangentOverlay(_traceFn, _traceX);
+        _plotDirty = true;
+        replot();
+        snprintf(pillBuf, sizeof(pillBuf), "Tangent at x=%.4f", (double)_traceX);
+        res.found = true;
         break;
     }
     default:
@@ -2688,80 +2817,96 @@ void GrapherApp::executeCalcOption(int option) {
 // ═══════════════════════════════════════════════════════════════════════
 
 void GrapherApp::drawIntegralShading(int funcIdx, float shadeXMin, float shadeXMax) {
-    clearIntegralShading();
-    if (!_graphArea || funcIdx < 0 || funcIdx >= _numFuncs || !_funcs[funcIdx].valid)
+    if (!_graphBuf || funcIdx < 0 || funcIdx >= _numFuncs || !_funcs[funcIdx].valid)
         return;
 
-    int areaW = lv_obj_get_width(_graphArea);
-    int areaH = lv_obj_get_height(_graphArea);
+    int areaW = GRAPH_CANVAS_W;
+    int areaH = GRAPH_CANVAS_H;
     if (areaW < 2 || areaH < 2) return;
 
-    float xRange = _xMax - _xMin;
-    float yRange = _yMax - _yMin;
+    float xRange = (float)(_xMax - _xMin);
+    float yRange = (float)(_yMax - _yMin);
     if (xRange <= 0.0f || yRange <= 0.0f) return;
 
-    // Find the Y pixel of the x-axis (y=0)
-    float yAxisPx = (1.0f - (0.0f - _yMin) / yRange) * areaH;
+    if (shadeXMax < shadeXMin) {
+        float tmp = shadeXMin;
+        shadeXMin = shadeXMax;
+        shadeXMax = tmp;
+    }
 
-    int count = 0;
-    uint32_t funcColor = _funcs[funcIdx].color;
+    const int sx0 = std::max(0, std::min(areaW - 1, _view.worldToScreenX(shadeXMin)));
+    const int sx1 = std::max(0, std::min(areaW - 1, _view.worldToScreenX(shadeXMax)));
+    const int left = std::min(sx0, sx1);
+    const int right = std::max(sx0, sx1);
 
-    for (int px = 0; px < areaW && count < 320; ++px) {
-        float wx = _xMin + (float)px / areaW * xRange;
+    const int yAxisPx = _view.worldToScreenY(0.0f);
+    const uint16_t shade565 = toRgb565(_funcs[funcIdx].color);
+
+    for (int px = left; px <= right; ++px) {
+        const float wx = (float)_xMin + ((float)px / (float)areaW) * xRange;
         if (wx < shadeXMin || wx > shadeXMax) continue;
 
-        float wy = evalAt(funcIdx, wx);
+        const float wy = (float)evalAt(funcIdx, wx);
         if (std::isnan(wy) || std::isinf(wy)) continue;
 
-        float sy = (1.0f - (wy - _yMin) / yRange) * areaH;
-
-        // Clip to visible area
+        int sy = _view.worldToScreenY(wy);
         if (sy < 0) sy = 0;
-        if (sy > areaH) sy = static_cast<float>(areaH);
-
-        float y0 = yAxisPx;
+        if (sy >= areaH) sy = areaH - 1;
+        int y0 = yAxisPx;
         if (y0 < 0) y0 = 0;
-        if (y0 > areaH) y0 = static_cast<float>(areaH);
+        if (y0 >= areaH) y0 = areaH - 1;
 
-        // Draw vertical line from axis to function value
-        float lineTop = std::min(sy, y0);
-        float lineBot = std::max(sy, y0);
-        if (lineBot - lineTop < 1.0f) continue;
-
-        // TODO (Phase 5): Implement integrated shading with lv_obj lines
-        // This requires _shadingLines[] array declaration in GrapherApp.h
-        // and proper lifecycle management in end()
-        /*
-        lv_obj_t* line = lv_obj_create(_graphArea);
-        if (!line) break;  
-
-        lv_obj_set_size(line, 1, (int)(lineBot - lineTop));
-        lv_obj_set_pos(line, px, (int)lineTop);
-        lv_obj_set_style_bg_color(line, lv_color_hex(funcColor), LV_PART_MAIN);
-        lv_obj_set_style_bg_opa(line, LV_OPA_30, LV_PART_MAIN);
-        lv_obj_set_style_border_width(line, 0, LV_PART_MAIN);
-        lv_obj_set_style_radius(line, 0, LV_PART_MAIN);
-        lv_obj_set_style_pad_all(line, 0, LV_PART_MAIN);
-        lv_obj_remove_flag(line, static_cast<lv_obj_flag_t>(LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_CLICKABLE));
-
-        _shadingLines[count] = line;
-        count++;
-        */
+        const int top = std::min(sy, y0);
+        const int bot = std::max(sy, y0);
+        for (int py = top; py <= bot; ++py) {
+            if (!useStipplePixel(px, py)) continue;  // checkerboard stipple
+            _graphBuf[py * areaW + px] = shade565;
+        }
     }
-    // TODO: Integrate with new GraphView::drawAreaUnderCurve() in Kandinsky buffer
+
     _shadingActive = true;
+    _shadingFuncIdx = funcIdx;
+    _shadingX0 = shadeXMin;
+    _shadingX1 = shadeXMax;
 }
 
 void GrapherApp::clearIntegralShading() {
-    if (!_shadingActive) return;
-    // TODO: Cleanup shading lines when Phase 5 is implemented
-    /*
-    for (int i = 0; i < _shadingCount; ++i) {
-        if (_shadingLines[i]) {
-            lv_obj_delete(_shadingLines[i]);
-            _shadingLines[i] = nullptr;
-        }
-    }
-    */
     _shadingActive = false;
+    _shadingFuncIdx = -1;
+    _shadingX0 = 0.0f;
+    _shadingX1 = 0.0f;
+}
+
+void GrapherApp::drawTangentOverlay(int funcIdx, float xTarget) {
+    if (!_graphBuf || funcIdx < 0 || funcIdx >= _numFuncs || !_funcs[funcIdx].valid) return;
+    const float yTarget = (float)evalAt(funcIdx, xTarget);
+    if (std::isnan(yTarget) || std::isinf(yTarget)) return;
+
+    const float xRange = (float)(_xMax - _xMin);
+    const float hPixel = xRange / (float)GRAPH_CANVAS_W;
+    const float h = std::max(hPixel, xRange * TANGENT_FD_STEP_RATIO);  // finite-difference step size
+    if (h <= 0.0f) return;
+
+    const float yPlus = (float)evalAt(funcIdx, xTarget + h);
+    const float yMinus = (float)evalAt(funcIdx, xTarget - h);
+    if (std::isnan(yPlus) || std::isinf(yPlus) || std::isnan(yMinus) || std::isinf(yMinus)) return;
+
+    const float derivative = (yPlus - yMinus) / (2.0f * h);  // Central difference
+    if (std::isnan(derivative) || std::isinf(derivative)) return;
+    const float xLeft = (float)_xMin;
+    const float xRight = (float)_xMax;
+    const float yLeft = yTarget + derivative * (xLeft - xTarget);
+    const float yRight = yTarget + derivative * (xRight - xTarget);
+    if (std::isnan(yLeft) || std::isinf(yLeft) || std::isnan(yRight) || std::isinf(yRight)) return;
+
+    _view.drawFunctionSegment(xLeft, yLeft, xRight, yRight, _funcs[funcIdx].color);
+    _tangentActive = true;
+    _tangentFuncIdx = funcIdx;
+    _tangentX = xTarget;
+}
+
+void GrapherApp::clearTangent() {
+    _tangentActive = false;
+    _tangentFuncIdx = -1;
+    _tangentX = 0.0f;
 }

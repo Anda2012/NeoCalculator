@@ -60,7 +60,7 @@ private:
     static constexpr int TPL_LOAD_INTERVAL_MS = 30;  // Lazy template load interval
     static constexpr int MAX_POIS     = 20;   // Max pre-computed points of interest (roots + intersections)
     static constexpr int BISECTION_ITER = 25; // Bisection iterations for root/POI refinement
-    static constexpr float POI_SNAP_THRESHOLD_PX = 5.0f; // Magnetic snap radius in screen pixels
+    static constexpr float POI_SNAP_THRESHOLD_PX = 8.0f; // Magnetic snap radius in screen pixels
     static constexpr int TBL_HDR_H    = 22;   // Sticky table header height
 
     // Function colours (NumWorks palette)
@@ -82,9 +82,18 @@ private:
     // ── Per-function slot (MVC: Model data, stored here for UI access) ──
     using FuncSlot = grapher::CartesianFunction;
 
+    enum class POIType : uint8_t {
+        Root,
+        Min,
+        Max,
+        Intercept,
+        Intersection
+    };
+
     // ── Point of Interest (for snap-to-POI) ──────────────────────────
     struct POI {
         float x, y;
+        POIType type;
         char  label[22];   // "Root", "Min", "Max", "Intercept", "Intersection"
     };
 
@@ -155,6 +164,7 @@ private:
 
     // ── Calculate menu (floating overlay) ────────────────────────────
     static constexpr int CALC_MENU_ITEMS = 6;  // +1 for "Draw Tangent"
+    static_assert(CALC_MENU_ITEMS == 6, "CALC_MENU_ITEMS must match CALC_MENU_LABELS");
     lv_obj_t*       _calcMenu;          // Floating menu container (nullptr when closed)
     lv_obj_t*       _calcMenuRows[CALC_MENU_ITEMS]; // Menu option labels
     int             _calcMenuIdx;       // Currently highlighted menu item
@@ -182,6 +192,7 @@ private:
     POI  _pois[MAX_POIS];
     int  _numPOIs;
     bool _snappedToPOI;     // cursor is currently at a snapped POI
+    int  _snappedPOIIdx;    // index of snapped POI in _pois[]
     int  _snapEscapeCount;  // >0: ignore snap for this many more moves
 
     // ── State ────────────────────────────────────────────────────────
