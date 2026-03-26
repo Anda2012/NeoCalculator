@@ -7,21 +7,18 @@ on:
 
 jobs:
   build:
-    # Se ejecuta SIEMPRE, a menos que el mensaje contenga [skip ci] o [no build]
-    if: "!contains(github.event.head_commit.message, '[skip ci]') && !contains(github.event.head_commit.message, '[no build]')"
-    
+    if: "!contains(github.event.head_commit.message, '[skip ci]')"
     runs-on: ubuntu-latest
     permissions:
       contents: write
 
     steps:
-      - name: Checkout
+      - name: Checkout Repository
         uses: actions/checkout@v4
 
       - name: Get Current Date
         id: date
-        # Genera la fecha en formato día-mes-año
-        run: echo "DATE=$(date +'%d-%m-%Y')" >> $GITHUB_ENV
+        run: echo "DATE=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -36,17 +33,34 @@ jobs:
       - name: Build NumOS (PlatformIO)
         run: pio run -e esp32s3_n16r8
 
-      - name: Create Release
+      - name: Rename Firmware File
+        # Renombramos el archivo para que el usuario descargue algo descriptivo
+        run: cp .pio/build/esp32s3_n16r8/firmware.bin NumOS_v1.0-alpha_ESP32S3.bin
+
+      - name: Create GitHub Release
         uses: ncipollo/release-action@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          # Usamos la fecha y el SHA corto para que el Tag sea único
-          tag: "v1.0-${{ env.DATE }}-${{ github.run_number }}"
-          name: "NumOS v1.0 [${{ env.DATE }}]"
-          artifacts: ".pio/build/esp32s3_n16r8/firmware.bin"
+          # Tag format: v1.0-alpha-2026-03-26-build5
+          tag: "v1.0-alpha-${{ env.DATE }}-build${{ github.run_number }}"
+          name: "NumOS v1.0-alpha [${{ env.DATE }}]"
+          artifacts: "NumOS_v1.0-alpha_ESP32S3.bin"
           allowUpdates: true
+          makeLatest: false # Alpha builds usually shouldn't be the "Latest" stable
+          prerelease: true  # This adds the "Pre-release" orange label in GitHub
           body: |
-            ### Release Automática de NumOS
-            **Fecha:** ${{ env.DATE }}
-            **Commit:** ${{ github.event.head_commit.message }}
-            **Build Number:** ${{ github.run_number }}
+            ## ⚠️ Alpha Release
+            This version is an **automated alpha build** and is intended for testing purposes only. 
+            Expect bugs and frequent updates. This is in current development and may not be stable (WIP).
+            
+            ### Installation
+            1. Download the `NumOS_v1.0-alpha_ESP32S3.bin` file from the **Assets** section.
+            2. Flash it to your **ESP32-S3** device.
+            
+            ### Build Details
+            - **Status:** Alpha / WIP
+            - **Date:** ${{ env.DATE }}
+            - **Commit:** ${{ github.event.head_commit.message }}
+            
+            > [!IMPORTANT]
+            > The "Source code" files below are automatically generated and are not required for flashing.
