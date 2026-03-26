@@ -60,8 +60,7 @@ private:
     static constexpr int TPL_LOAD_INTERVAL_MS = 30;  // Lazy template load interval
     static constexpr int MAX_POIS     = 20;   // Max pre-computed points of interest (roots + intersections)
     static constexpr int BISECTION_ITER = 25; // Bisection iterations for root/POI refinement
-    static constexpr int ASYNC_POI_STEPS_PER_TICK = 4; // Scan steps computed per LVGL timer tick
-    static constexpr float POI_SNAP_THRESHOLD_PX = 5.0f; // Magnetic snap radius in screen pixels
+    static constexpr float POI_SNAP_THRESHOLD_PX = 8.0f; // Magnetic snap radius in screen pixels
     static constexpr int TBL_HDR_H    = 22;   // Sticky table header height
 
     // Function colours (NumWorks palette)
@@ -83,9 +82,18 @@ private:
     // ── Per-function slot (MVC: Model data, stored here for UI access) ──
     using FuncSlot = grapher::CartesianFunction;
 
+    enum class POIType : uint8_t {
+        Root,
+        Min,
+        Max,
+        Intercept,
+        Intersection
+    };
+
     // ── Point of Interest (for snap-to-POI) ──────────────────────────
     struct POI {
         float x, y;
+        POIType type;
         char  label[22];   // "Root", "Min", "Max", "Intercept", "Intersection"
     };
 
@@ -156,6 +164,7 @@ private:
 
     // ── Calculate menu (floating overlay) ────────────────────────────
     static constexpr int CALC_MENU_ITEMS = 6;  // +1 for "Draw Tangent"
+    static_assert(CALC_MENU_ITEMS == 6, "CALC_MENU_ITEMS must match CALC_MENU_LABELS");
     lv_obj_t*       _calcMenu;          // Floating menu container (nullptr when closed)
     lv_obj_t*       _calcMenuRows[CALC_MENU_ITEMS]; // Menu option labels
     int             _calcMenuIdx;       // Currently highlighted menu item
@@ -183,6 +192,7 @@ private:
     POI  _pois[MAX_POIS];
     int  _numPOIs;
     bool _snappedToPOI;     // cursor is currently at a snapped POI
+    int  _snappedPOIIdx;    // index of snapped POI in _pois[]
     int  _snapEscapeCount;  // >0: ignore snap for this many more moves
 
     // ── State ────────────────────────────────────────────────────────
@@ -279,19 +289,17 @@ private:
     // ── Async POI internal state ──────────────────────────────────────
     lv_timer_t* _poiAsyncTimer;
     int         _poiAsyncFi;
-    int         _poiAsyncStep;
-    float       _poiAsyncYPrev;
-    float       _poiAsyncYPrev2;
 
     // ── Table helpers ────────────────────────────────────────────────
     void rebuildTable();
 
     // ── Math ─────────────────────────────────────────────────────────
     float evalAt(int funcIdx, float x);
+    void appendPOIsForFunction(int funcIdx);
 
     // ── Adaptive sampling (streaming directly to GraphView buffer) ────
     void sampleFuncAdaptive(int fi, uint32_t color);
-    void adaptSegStream(GrapherApp* app, int fi,
+    void adaptSegStream(int fi,
                         float wx0, float wy0,
                         float wx1, float wy1,
                         int depth, uint32_t color);

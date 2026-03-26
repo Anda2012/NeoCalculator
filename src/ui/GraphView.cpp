@@ -176,29 +176,26 @@ void GraphView::drawAxes() {
 }
 
 void GraphView::redrawGridAndAxes() {
-    // Clear to white
-    uint16_t whiteColor = rgb888to565(0xFFFFFF);
-    std::fill(_graphBuf, _graphBuf + _bufW * _bufH, whiteColor);
-
-    // Draw grid and axes
+    clearBuffer();
     drawGrid();
     drawAxes();
 }
 
 void GraphView::clearBuffer() {
-    // Clear to white (does NOT redraw grid/axes)
-    uint16_t whiteColor = rgb888to565(0xFFFFFF);
-    std::fill(_graphBuf, _graphBuf + _bufW * _bufH, whiteColor);
+    if (!_graphBuf || _bufW <= 0 || _bufH <= 0) return;
+    std::memset(_graphBuf, 0xFF, (size_t)_bufW * (size_t)_bufH * sizeof(uint16_t));
 }
 
 void GraphView::drawFunctionSegment(float wx0, float wy0, float wx1, float wy1, uint32_t rgbColor) {
-    // Convert world coordinates to screen coordinates and draw a line
-    int sx0 = worldToScreenX(wx0);
-    int sy0 = worldToScreenY(wy0);
-    int sx1 = worldToScreenX(wx1);
-    int sy1 = worldToScreenY(wy1);
-
-    uint16_t color565 = rgb888to565(rgbColor);
+    if (std::isnan(wx0) || std::isnan(wy0) || std::isnan(wx1) || std::isnan(wy1) ||
+        std::isinf(wx0) || std::isinf(wy0) || std::isinf(wx1) || std::isinf(wy1)) {
+        return;
+    }
+    const int sx0 = worldToScreenX(wx0);
+    const int sy0 = worldToScreenY(wy0);
+    const int sx1 = worldToScreenX(wx1);
+    const int sy1 = worldToScreenY(wy1);
+    const uint16_t color565 = rgb888to565(rgbColor);
     fastDrawLine(sx0, sy0, sx1, sy1, color565);
 }
 
