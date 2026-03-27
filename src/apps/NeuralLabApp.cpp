@@ -12,6 +12,7 @@
 #include <cstring>
 #include <cmath>
 #include <cstdlib>
+#include "../utils/ColorUtils.h"
 
 #ifdef ARDUINO
 #include <esp_heap_caps.h>
@@ -43,13 +44,6 @@ static void freeBuf16(uint16_t* p) {
 // ═══════════════════════════════════════════════════════════════════════════════
 // Color Helpers
 // ═══════════════════════════════════════════════════════════════════════════════
-
-uint16_t NeuralLabApp::rgb888to565(uint32_t rgb) {
-    uint8_t r = (rgb >> 16) & 0xFF;
-    uint8_t g = (rgb >> 8)  & 0xFF;
-    uint8_t b =  rgb        & 0xFF;
-    return ((r >> 3) << 11) | ((g >> 2) << 5) | (b >> 3);
-}
 
 uint16_t NeuralLabApp::blendColor(float value) {
     // value 0..1: 0 = blue (class B), 1 = red (class A)
@@ -454,13 +448,13 @@ void NeuralLabApp::renderDecisionBoundary() {
             if (_scenario == Scenario::SINE_REGRESSION) {
                 float targetY = 1.0f - (float)py / DB_H;
                 float diff = fabsf(out - targetY);
-                if (diff < 0.03f) {
-                    _dbBuffer[py * DB_W + px] = rgb888to565(0x00FFCC);
-                } else {
-                    uint8_t g = (uint8_t)(15 + targetY * 25);
-                    _dbBuffer[py * DB_W + px] = rgb888to565(
-                        ((uint32_t)(g/3) << 16) | ((uint32_t)g << 8) | (uint32_t)(g/2));
-                }
+                    if (diff < 0.03f) {
+                        _dbBuffer[py * DB_W + px] = utils::rgb888to565(0x00FFCC);
+                    } else {
+                        uint8_t g = (uint8_t)(15 + targetY * 25);
+                        _dbBuffer[py * DB_W + px] = utils::rgb888to565(
+                            ((uint32_t)(g/3) << 16) | ((uint32_t)g << 8) | (uint32_t)(g/2));
+                    }
             } else {
                 _dbBuffer[py * DB_W + px] = blendColor(out);
             }
@@ -541,10 +535,10 @@ void NeuralLabApp::renderClassifierPoints() {
     for (int i = 0; i < _sampleCount; i++) {
         int px = (int)(_samples[i].inputs[0] * DB_W) * DB_SCALE;
         int py = (int)(_samples[i].inputs[1] * DB_H) * DB_SCALE;
-        uint16_t color = (_samples[i].targets[0] > 0.5f)
-                         ? rgb888to565(COL_CLASS_B)
-                         : rgb888to565(COL_CLASS_A);
-        uint16_t outline = rgb888to565(0xFFFFFF);
+            uint16_t color = (_samples[i].targets[0] > 0.5f)
+                             ? utils::rgb888to565(COL_CLASS_B)
+                             : utils::rgb888to565(COL_CLASS_A);
+            uint16_t outline = utils::rgb888to565(0xFFFFFF);
 
         // Outline
         for (int dy = -3; dy <= 3; dy++) {
@@ -573,7 +567,7 @@ void NeuralLabApp::renderClassifierPoints() {
         _scenario == Scenario::SPIRAL) {
         int cx = _cursorX * DB_SCALE;
         int cy = _cursorY * DB_SCALE;
-        uint16_t curCol = rgb888to565(COL_CURSOR);
+        uint16_t curCol = utils::rgb888to565(COL_CURSOR);
 
         // Crosshair with gap in center
         for (int d = -6; d <= 6; d++) {
@@ -614,7 +608,7 @@ void NeuralLabApp::renderNetworkGraph() {
     }
 
     // Cyan border
-    uint16_t borderCol = rgb888to565(0x006666);
+    uint16_t borderCol = utils::rgb888to565(0x006666);
     for (int x = graphX; x < graphX + graphW && x < SCREEN_W; x++) {
         if (x >= 0 && graphY < SCREEN_H) _renderBuf[graphY * SCREEN_W + x] = borderCol;
         if (x >= 0 && graphY + graphH - 1 < SCREEN_H)
@@ -656,12 +650,12 @@ void NeuralLabApp::renderNetworkGraph() {
 
                 uint16_t lineColor;
                 if (w > 0) {
-                    lineColor = rgb888to565(
+                    lineColor = utils::rgb888to565(
                         ((uint32_t)(intensity/4) << 16) |
                         ((uint32_t)(intensity/2) << 8) |
                         (uint32_t)intensity);
                 } else {
-                    lineColor = rgb888to565(
+                    lineColor = utils::rgb888to565(
                         ((uint32_t)intensity << 16) |
                         ((uint32_t)(intensity/4) << 8) |
                         (uint32_t)(intensity/6));
@@ -688,7 +682,7 @@ void NeuralLabApp::renderNetworkGraph() {
                         float pixFrac = (float)pixIdx / (float)(lineLen > 0 ? lineLen : 1);
                         if (fabsf(pixFrac - pulsePos) < 0.1f) {
                             if (x0 >= 0 && x0 < SCREEN_W && y0 >= 0 && y0 < SCREEN_H)
-                                _renderBuf[y0 * SCREEN_W + x0] = rgb888to565(0xFFFFFF);
+                                _renderBuf[y0 * SCREEN_W + x0] = utils::rgb888to565(0xFFFFFF);
                         }
                     }
 
@@ -716,7 +710,7 @@ void NeuralLabApp::renderNetworkGraph() {
             uint8_t r = (uint8_t)(40 + 215 * nAbs);
             uint8_t g = (uint8_t)(80 + 175 * nAbs);
             uint8_t b = (uint8_t)(100 + 155 * nAbs);
-            uint16_t nCol = rgb888to565(((uint32_t)r << 16) | ((uint32_t)g << 8) | b);
+            uint16_t nCol = utils::rgb888to565(((uint32_t)r << 16) | ((uint32_t)g << 8) | b);
 
             // Filled circle radius 3
             for (int dy = -3; dy <= 3; dy++) {
@@ -732,7 +726,7 @@ void NeuralLabApp::renderNetworkGraph() {
 
             // Bright edge ring for "glow" effect on high activation
             if (nAbs > 0.5f) {
-                uint16_t glowCol = rgb888to565(COL_ACCENT);
+                uint16_t glowCol = utils::rgb888to565(COL_ACCENT);
                 for (int dy = -4; dy <= 4; dy++) {
                     for (int dx = -4; dx <= 4; dx++) {
                         int dist2 = dx*dx + dy*dy;
@@ -760,13 +754,13 @@ void NeuralLabApp::renderLossChart() {
     for (int y = chartY; y < chartY + chartH && y < SCREEN_H; y++) {
         for (int x = chartX; x < chartX + chartW && x < SCREEN_W; x++) {
             if (x >= 0) {
-                _renderBuf[y * SCREEN_W + x] = rgb888to565(0x0A0A14);
+                _renderBuf[y * SCREEN_W + x] = utils::rgb888to565(0x0A0A14);
             }
         }
     }
 
     // Cyan border
-    uint16_t borderCol = rgb888to565(0x006666);
+    uint16_t borderCol = utils::rgb888to565(0x006666);
     for (int x = chartX; x < chartX + chartW && x < SCREEN_W; x++) {
         if (x >= 0) {
             _renderBuf[chartY * SCREEN_W + x] = borderCol;
@@ -797,7 +791,7 @@ void NeuralLabApp::renderLossChart() {
     if (logMax - logMin < 0.1f) logMin = logMax - 1.0f;
 
     // Plot loss curve
-    uint16_t lineCol = rgb888to565(0x00FFCC);
+    uint16_t lineCol = utils::rgb888to565(0x00FFCC);
     int prevPx = -1, prevPy = -1;
     for (int i = 0; i < _lossHistoryCount; i++) {
         int idx = (_lossHistoryIdx - _lossHistoryCount + i + LOSS_HISTORY_SIZE) % LOSS_HISTORY_SIZE;
@@ -832,7 +826,7 @@ void NeuralLabApp::renderLossChart() {
     }
 
     // "Loss" label
-    uint16_t labelCol = rgb888to565(0x888888);
+    uint16_t labelCol = utils::rgb888to565(0x888888);
     // Draw a small "L" indicator at top-left of chart
     for (int d = 0; d < 6; d++) {
         int lx = chartX + 3, ly = chartY + 3 + d;
@@ -857,8 +851,8 @@ void NeuralLabApp::renderAccuracyGauge() {
 
     // Background
     for (int y = gaugeY; y < gaugeY + gaugeH && y < SCREEN_H; y++) {
-        for (int x = gaugeX; x < gaugeX + gaugeW && x < SCREEN_W; x++) {
-            _renderBuf[y * SCREEN_W + x] = rgb888to565(0x0A0A14);
+            for (int x = gaugeX; x < gaugeX + gaugeW && x < SCREEN_W; x++) {
+            _renderBuf[y * SCREEN_W + x] = utils::rgb888to565(0x0A0A14);
         }
     }
 
@@ -866,9 +860,9 @@ void NeuralLabApp::renderAccuracyGauge() {
     float frac = _lastAccuracy / 100.0f;
     if (frac > 1.0f) frac = 1.0f;
     int fillW = (int)(frac * (gaugeW - 2));
-    uint16_t fillCol = (frac > 0.9f) ? rgb888to565(0x00FF88) :
-                       (frac > 0.5f) ? rgb888to565(0xFFCC00) :
-                                       rgb888to565(0xFF4444);
+    uint16_t fillCol = (frac > 0.9f) ? utils::rgb888to565(0x00FF88) :
+                       (frac > 0.5f) ? utils::rgb888to565(0xFFCC00) :
+                                       utils::rgb888to565(0xFF4444);
     for (int y = gaugeY + 1; y < gaugeY + gaugeH - 1 && y < SCREEN_H; y++) {
         for (int x = gaugeX + 1; x < gaugeX + 1 + fillW && x < SCREEN_W; x++) {
             _renderBuf[y * SCREEN_W + x] = fillCol;
@@ -876,7 +870,7 @@ void NeuralLabApp::renderAccuracyGauge() {
     }
 
     // Border
-    uint16_t bCol = rgb888to565(0x006666);
+    uint16_t bCol = utils::rgb888to565(0x006666);
     for (int x = gaugeX; x < gaugeX + gaugeW && x < SCREEN_W; x++) {
         _renderBuf[gaugeY * SCREEN_W + x] = bCol;
         if (gaugeY + gaugeH - 1 < SCREEN_H)

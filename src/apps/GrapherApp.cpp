@@ -10,6 +10,7 @@
 #include <cstdio>
 #include <esp_heap_caps.h>
 #include "../math/VariableManager.h"
+#include "../utils/ColorUtils.h"
 
 using namespace vpam;
 
@@ -47,18 +48,6 @@ static constexpr int INIT_SAMPLE_N = 40;  // Initial samples
 static constexpr int ADAPT_DEPTH = 3;     // Adaptive refinement depth
 static constexpr float TANGENT_REDRAW_THRESHOLD_PIXELS = 0.25f;
 static constexpr float TANGENT_FD_STEP_RATIO = 0.001f;
-static constexpr int RGB565_R_SHIFT = 11;
-static constexpr int RGB565_G_SHIFT = 5;
-static constexpr int RGB565_R_MASK = 0x1F;
-static constexpr int RGB565_G_MASK = 0x3F;
-static constexpr int RGB565_B_MASK = 0x1F;
-
-static inline uint16_t toRgb565(uint32_t rgb) {
-    const uint16_t r = (uint16_t)((rgb >> 19) & RGB565_R_MASK);
-    const uint16_t g = (uint16_t)((rgb >> 10) & RGB565_G_MASK);
-    const uint16_t b = (uint16_t)((rgb >> 3) & RGB565_B_MASK);
-    return (uint16_t)((r << RGB565_R_SHIFT) | (g << RGB565_G_SHIFT) | b);
-}
 
 static inline bool useStipplePixel(int x, int y) {
     return ((x + y) & 1) == 0;
@@ -356,7 +345,8 @@ void GrapherApp::createExpressionsPanel() {
         _exprDots[i] = lv_obj_create(_exprRows[i]);
         lv_obj_set_size(_exprDots[i], 10, 10);
         lv_obj_set_style_bg_color(_exprDots[i], lv_color_hex(_funcs[i].color), LV_PART_MAIN);
-        lv_obj_set_style_bg_opa(_exprDots[i], LV_OPA_COVER, LV_PART_MAIN);
+        lv_obj_set_style_bg_opa(_exprDots[i],
+            _funcs[i].visible ? LV_OPA_COVER : LV_OPA_30, LV_PART_MAIN);
         lv_obj_set_style_radius(_exprDots[i], 5, LV_PART_MAIN);
         lv_obj_set_style_border_width(_exprDots[i], 0, LV_PART_MAIN);
         lv_obj_remove_flag(_exprDots[i], LV_OBJ_FLAG_SCROLLABLE);
@@ -530,6 +520,13 @@ void GrapherApp::createGraphPanel() {
         new (&_view) grapher::GraphView(_graphBuf, GRAPH_CANVAS_W, GRAPH_CANVAS_H);
     } else {
         Serial.printf("[GRAPHER] FAIL: Kandinsky PSRAM alloc %u bytes\n", (unsigned)bufSz);
+        // ── PSRAM Safety Net: graceful degradation with user-visible warning ──
+        lv_obj_t* errLabel = lv_label_create(_graphArea);
+        lv_label_set_text(errLabel, LV_SYMBOL_WARNING " ERR: INSUFFICIENT PSRAM\nClose other apps.");
+        lv_obj_set_style_text_color(errLabel, lv_color_hex(0xCC0000), LV_PART_MAIN);
+        lv_obj_set_style_text_font(errLabel, &lv_font_montserrat_14, LV_PART_MAIN);
+        lv_obj_set_style_text_align(errLabel, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
+        lv_obj_center(errLabel);
     }
 
     // Set up the LVGL image descriptor pointing at our raw buffer
@@ -829,6 +826,11 @@ void GrapherApp::refreshExprList() {
     for (int i = 0; i < MAX_FUNCS; ++i) {
         if (i < _numFuncs) {
             lv_obj_remove_flag(_exprRows[i], LV_OBJ_FLAG_HIDDEN);
+            // Sync dot opacity with visibility flag
+            if (_exprDots[i]) {
+                lv_obj_set_style_bg_opa(_exprDots[i],
+                    _funcs[i].visible ? LV_OPA_COVER : LV_OPA_30, LV_PART_MAIN);
+            }
             // Refresh VPAM canvas rendering (also resizes canvas)
             refreshVPAMExpr(i);
             lv_obj_set_pos(_exprRows[i], PAD, curY);
@@ -1719,11 +1721,12 @@ void GrapherApp::updateInfoBar() {
 void GrapherApp::autoFit() {
     _xMin = -10; _xMax = 10;
     _yMin = -7;  _yMax = 7;
-    // Try to fit based on active functions
+    // Smart Auto-Fit: sample all *visible* functions across the X domain,
+    // find the absolute min/max Y, add 10 % padding, and snap the viewport.
     float globalYMin = 1e9f, globalYMax = -1e9f;
     bool hasData = false;
     for (int f = 0; f < _numFuncs; ++f) {
-        if (!_funcs[f].valid) continue;
+        if (!_funcs[f].valid || !_funcs[f].visible) continue;
         for (int px = 0; px < SCREEN_W; px += 4) {
             float wx = _xMin + (float)px / SCREEN_W * (_xMax - _xMin);
             float wy = evalAt(f, wx);
@@ -1735,8 +1738,11 @@ void GrapherApp::autoFit() {
         }
     }
     if (hasData) {
-        float margin = (globalYMax - globalYMin) * 0.15f;
-        if (margin < 1.0f) margin = 1.0f;
+        float range = globalYMax - globalYMin;
+        // Handle flat functions (e.g. y=5) — use ±1 fallback range
+        if (range < 1e-6f) range = 2.0f;
+        float margin = range * 0.10f;  // 10 % padding
+        if (margin < 0.5f) margin = 0.5f;
         _yMin = globalYMin - margin;
         _yMax = globalYMax + margin;
     }
@@ -2140,6 +2146,22 @@ void GrapherApp::handleExprList(const KeyEvent& ev) {
     case KeyCode::DOWN:
         if (_exprIdx < maxIdx) _exprIdx++;
         refreshExprFocus();
+        break;
+    case KeyCode::LEFT:
+        // ── Visibility toggle (NumWorks feel) ─────────────────────────
+        // LEFT on a function row toggles its visibility flag.
+        // The colour dot dims to 30 % opacity when hidden.
+        if (_exprIdx < _numFuncs) {
+            _funcs[_exprIdx].visible = !_funcs[_exprIdx].visible;
+            if (_exprDots[_exprIdx]) {
+                lv_obj_set_style_bg_opa(_exprDots[_exprIdx],
+                    _funcs[_exprIdx].visible ? LV_OPA_COVER : LV_OPA_30,
+                    LV_PART_MAIN);
+            }
+            // Immediate replot if graph panel exists
+            _plotDirty = true;
+            if (_panelGraph) replot();
+        }
         break;
     case KeyCode::ENTER:
         if (_exprIdx < _numFuncs) {
@@ -2840,7 +2862,7 @@ void GrapherApp::drawIntegralShading(int funcIdx, float shadeXMin, float shadeXM
     const int right = std::max(sx0, sx1);
 
     const int yAxisPx = _view.worldToScreenY(0.0f);
-    const uint16_t shade565 = toRgb565(_funcs[funcIdx].color);
+    const uint16_t shade565 = utils::rgb888to565(_funcs[funcIdx].color);
 
     for (int px = left; px <= right; ++px) {
         const float wx = (float)_xMin + ((float)px / (float)areaW) * xRange;

@@ -149,7 +149,6 @@ private:
     void loadModel();
 
     // ── Color helpers ──
-    static uint16_t rgb888to565(uint32_t rgb);
     static uint16_t blendColor(float value);  // 0..1 → blue..red gradient
 
     // ── LVGL callbacks ──

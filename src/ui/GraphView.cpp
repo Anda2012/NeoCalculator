@@ -8,6 +8,7 @@
 #include <cmath>
 #include <cstring>
 #include <algorithm>
+#include "../utils/ColorUtils.h"
 
 namespace grapher {
 
@@ -58,15 +59,8 @@ float GraphView::screenToWorldY(int sy) const {
 }
 
 // ═════════════════════════════════════════════════════════════════════════
-// Color conversion (RGB888 → RGB565)
+// Color conversion — delegated to utils::rgb888to565 (ColorUtils.h)
 // ═════════════════════════════════════════════════════════════════════════
-
-uint16_t GraphView::rgb888to565(uint32_t rgb) {
-    uint8_t r = (rgb >> 16) & 0xFF;
-    uint8_t g = (rgb >>  8) & 0xFF;
-    uint8_t b =  rgb        & 0xFF;
-    return (uint16_t)(((r >> 3) << 11) | ((g >> 2) << 5) | (b >> 3));
-}
 
 // ═════════════════════════════════════════════════════════════════════════
 // Bresenham line rasterizer (with clipping)
@@ -113,8 +107,8 @@ void GraphView::fastDrawLine(int x0, int y0, int x1, int y1, uint16_t color) {
 // ═════════════════════════════════════════════════════════════════════════
 
 void GraphView::drawGrid() {
-    uint16_t gridColor = rgb888to565(0xE0E0E0);  // Light grey
-    uint16_t subGridColor = rgb888to565(0xF0F0F0);  // Lighter grey
+    uint16_t gridColor = utils::rgb888to565(0xE0E0E0);  // Light grey
+    uint16_t subGridColor = utils::rgb888to565(0xF0F0F0);  // Lighter grey
 
     float xRange = _xMax - _xMin;
     float yRange = _yMax - _yMin;
@@ -160,7 +154,7 @@ void GraphView::drawGrid() {
 }
 
 void GraphView::drawAxes() {
-    uint16_t axisColor = rgb888to565(0x333333);  // Dark grey
+    uint16_t axisColor = utils::rgb888to565(0x333333);  // Dark grey
 
     // X-axis (y = 0)
     if (_yMin < 0.0f && _yMax > 0.0f) {
@@ -195,7 +189,7 @@ void GraphView::drawFunctionSegment(float wx0, float wy0, float wx1, float wy1, 
     const int sy0 = worldToScreenY(wy0);
     const int sx1 = worldToScreenX(wx1);
     const int sy1 = worldToScreenY(wy1);
-    const uint16_t color565 = rgb888to565(rgbColor);
+    const uint16_t color565 = utils::rgb888to565(rgbColor);
     fastDrawLine(sx0, sy0, sx1, sy1, color565);
 }
 
@@ -208,7 +202,7 @@ void GraphView::drawFunctionCurve(const std::vector<float>& xSamples,
                                   uint32_t rgbColor) {
     if (xSamples.size() < 2 || ySamples.size() != xSamples.size()) return;
 
-    uint16_t color565 = rgb888to565(rgbColor);
+    uint16_t color565 = utils::rgb888to565(rgbColor);
 
     // Draw polyline connecting sample points
     for (size_t i = 1; i < xSamples.size(); ++i) {
@@ -240,7 +234,7 @@ void GraphView::drawAreaUnderCurve(const std::vector<float>& xSamples,
                                    uint32_t rgbColor) {
     if (xSamples.size() < 2 || ySamples.size() != xSamples.size()) return;
 
-    uint16_t color565 = rgb888to565(rgbColor);
+    uint16_t color565 = utils::rgb888to565(rgbColor);
     int sx0 = worldToScreenX(x0);
     int sx1 = worldToScreenX(x1);
 
@@ -336,7 +330,7 @@ void GraphView::drawTangent(const std::vector<float>& xSamples,
     float y_right = yTarget + derivative * (x_right - xTarget);
     sy_right = worldToScreenY(y_right);
 
-    uint16_t color565 = rgb888to565(rgbColor);
+    uint16_t color565 = utils::rgb888to565(rgbColor);
     fastDrawLine(sx_left, sy_left, sx_right, sy_right, color565);
 }
 
@@ -350,7 +344,7 @@ void GraphView::drawIntersectionMarker(float xInt, float yInt, uint32_t rgbColor
 
     if (sx < 0 || sx >= _bufW || sy < 0 || sy >= _bufH) return;
 
-    uint16_t color565 = rgb888to565(rgbColor);
+    uint16_t color565 = utils::rgb888to565(rgbColor);
 
     // Draw a small circle (radius 3 pixels) at the intersection
     int radius = 3;

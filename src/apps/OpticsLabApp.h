@@ -50,7 +50,6 @@ private:
     static constexpr int AXIS_ROW    = VIEWPORT_H / 2;   // 78 in buffer coords
 
     // ── Colour helpers ────────────────────────────────────────────────
-    static uint16_t rgb888to565(uint32_t rgb888);
 
     // ── LVGL objects ──────────────────────────────────────────────────
     lv_obj_t*       _screen   = nullptr;

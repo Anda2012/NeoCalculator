@@ -14,8 +14,18 @@
 
 #include "DisplayDriver.h"
 #include "../ui/Theme.h"
+#include <esp_heap_caps.h>
+#include <cstring>
 
 DisplayDriver::DisplayDriver() : _tft(), _sprite(&_tft), _useSprite(false), _lvDisp(nullptr) {
+}
+
+DisplayDriver::~DisplayDriver() {
+    if (_dmaStagingBuf) {
+        heap_caps_free(_dmaStagingBuf);
+        _dmaStagingBuf = nullptr;
+        _dmaStagingBufBytes = 0;
+    }
 }
 
 void DisplayDriver::begin() {
@@ -69,12 +79,28 @@ void DisplayDriver::initLvgl(void* buf1, void* buf2, uint32_t bufBytes) {
     lv_display_set_flush_cb(_lvDisp, lvglFlushCb);
     Serial.println("[LVGL] Flush callback registrado");
 
-    // Asigna los buffers de render (ya alojados en PSRAM desde main.cpp).
+    // Asigna los buffers de render (normalmente INTERNAL/DMA desde main.cpp).
     // LV_DISPLAY_RENDER_MODE_PARTIAL: solo las "dirty regions" se renderizan.
     lv_display_set_buffers(_lvDisp,
                            buf1, buf2,
                            bufBytes,
                            LV_DISPLAY_RENDER_MODE_PARTIAL);
+
+    _dmaStagingBufBytes = bufBytes;
+    if (!_dmaStagingBuf && bufBytes > 0) {
+        _dmaStagingBuf = reinterpret_cast<uint16_t*>(
+            heap_caps_malloc(_dmaStagingBufBytes,
+                             MALLOC_CAP_INTERNAL | MALLOC_CAP_DMA));
+        if (_dmaStagingBuf) {
+            Serial.printf("[LVGL] DMA staging buffer asignado: %u bytes\n",
+                          (unsigned)_dmaStagingBufBytes);
+            _dmaEnabled = true;
+        } else {
+            Serial.println("[LVGL] WARNING: fallo asignacion DMA staging buffer; DMA deshabilitado");
+            _dmaEnabled = false;
+        }
+    }
+
     Serial.printf("[LVGL] Buffers asignados: %u bytes cada uno\n", (unsigned)bufBytes);
 }
 
@@ -110,10 +136,11 @@ void DisplayDriver::lvglFlushCb(lv_display_t* disp,
 
     const uint32_t w = lv_area_get_width(area);
     const uint32_t h = lv_area_get_height(area);
+    const uint32_t pxCount = static_cast<uint32_t>(w) * static_cast<uint32_t>(h);
+    uint16_t* src = reinterpret_cast<uint16_t*>(pxMap);
 
     if (self->_dmaEnabled) {
-        // ── Ruta DMA no-bloqueante ──────────────────────────────────
-        // Completar el DMA anterior (si lo hay)
+        // Completar el DMA anterior si existía.
         if (self->_dmaPending) {
             self->_tft.dmaWait();
             self->_tft.endWrite();
@@ -122,19 +149,36 @@ void DisplayDriver::lvglFlushCb(lv_display_t* disp,
 
         self->_tft.startWrite();
         self->_tft.setAddrWindow(area->x1, area->y1, w, h);
-        self->_tft.pushPixelsDMA(reinterpret_cast<uint16_t*>(pxMap),
-                                 static_cast<uint32_t>(w * h));
-        self->_dmaPending = true;
 
-        // LVGL puede usar el otro buffer mientras el DMA corre.
+        bool useBlocking = false;
+        uint16_t* dmaSource = nullptr;
+
+        if (esp_ptr_dma_capable(pxMap)) {
+            dmaSource = src;
+        } else if (self->_dmaStagingBuf &&
+                   (pxCount * sizeof(uint16_t) <= self->_dmaStagingBufBytes)) {
+            memcpy(self->_dmaStagingBuf, src, pxCount * sizeof(uint16_t));
+            dmaSource = self->_dmaStagingBuf;
+        } else {
+            useBlocking = true;
+        }
+
+        if (!useBlocking && dmaSource) {
+            self->_tft.pushPixelsDMA(dmaSource, pxCount);
+            self->_dmaPending = true;
+            lv_display_flush_ready(disp);
+            return;
+        }
+
+        // Fallback seguro sin DMA (puede ocurrir si no hay buffer interno disponible).
+        self->_tft.pushColors(src, pxCount, true);
+        self->_tft.endWrite();
         lv_display_flush_ready(disp);
     } else {
-        // ── Ruta bloqueante (fallback) ─────────────────────────────
+        // Crecer fall back directo si DMA no habilitado.
         self->_tft.startWrite();
         self->_tft.setAddrWindow(area->x1, area->y1, w, h);
-        self->_tft.pushColors(reinterpret_cast<uint16_t*>(pxMap),
-                              static_cast<uint32_t>(w * h),
-                              true);   // swap RGB565 LE→BE
+        self->_tft.pushColors(src, pxCount, true);
         self->_tft.endWrite();
         lv_display_flush_ready(disp);
     }

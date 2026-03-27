@@ -54,6 +54,10 @@ public:
                             const lv_area_t* area,
                             uint8_t* pxMap);
 
+    // En la ruta DMA interna es necesario staging buffer para evitar
+    // DMA desde PSRAM en ESP32-S3.
+    ~DisplayDriver();
+
     // ── Primitivas heredadas (apps legacy, solo ESP32) ─────────────────
     #ifdef ARDUINO
     void clear(uint16_t color);
@@ -84,8 +88,12 @@ private:
     TFT_eSPI    _tft;
     TFT_eSprite _sprite;
     bool        _useSprite;
-    bool        _dmaEnabled  = false;  ///< true si initDMA() tuvo éxito
+    bool        _dmaEnabled  = false;  ///< true si initLvgl() creó staging buffer DMA
     bool        _dmaPending  = false;  ///< true si hay un DMA en vuelo
+
+    // Buffer internal DMA que se utiliza como staging si pxMap no es DMA-capable
+    uint16_t*   _dmaStagingBuf       = nullptr;
+    uint32_t    _dmaStagingBufBytes  = 0;
     #endif
 
     /** Puntero al display LVGL creado por initLvgl() */

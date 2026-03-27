@@ -95,9 +95,6 @@ private:
     int       _bufW, _bufH; ///< Buffer dimensions in pixels
     float     _xMin, _xMax, _yMin, _yMax;  ///< World viewport
 
-    /// utility: RGB888 → RGB565
-    static uint16_t rgb888to565(uint32_t rgb);
-
     /// Bresenham line into buffer with clipping
     void fastDrawLine(int x0, int y0, int x1, int y1, uint16_t color);
 

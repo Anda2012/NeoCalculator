@@ -15,6 +15,7 @@
 #include <cstdio>
 #include <cstring>
 #include <cmath>
+#include "../utils/ColorUtils.h"
 
 #ifdef ARDUINO
 #  include <esp_heap_caps.h>
@@ -355,13 +356,6 @@ int OpticsLabApp::mmToPixX(float mm) const {
 int OpticsLabApp::mmToPixY(float mm) const {
     // Positive y_mm → above axis → smaller row index
     return AXIS_ROW - (int)(mm * _scaleY + 0.5f);
-}
-
-uint16_t OpticsLabApp::rgb888to565(uint32_t rgb) {
-    uint8_t r = (rgb >> 16) & 0xFF;
-    uint8_t g = (rgb >>  8) & 0xFF;
-    uint8_t b =  rgb        & 0xFF;
-    return (uint16_t)(((r >> 3) << 11) | ((g >> 2) << 5) | (b >> 3));
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
