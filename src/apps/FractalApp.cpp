@@ -16,7 +16,6 @@ FractalApp::FractalApp()
 {
     // Make sure descriptor is clean
     memset(&_imgDsc, 0, sizeof(lv_image_dsc_t));
-    memset(&_currentJob, 0, sizeof(RenderJob));
 }
 
 FractalApp::~FractalApp() {
@@ -65,7 +64,7 @@ void FractalApp::end() {
 #ifdef ARDUINO
     if (_renderTaskHandle) {
         // Signal task to exit and abort any running process
-        _abortRender = true;
+        _abortRequested = true;
         _taskShouldExit = true;
 
         // Wake task if it's currently waiting for a notification
@@ -98,7 +97,7 @@ void FractalApp::load() {
     _statusBar.update();
 
     // Do an initial render
-    requestRender(true);
+    renderFractal();
 }
 
 void FractalApp::handleKey(const KeyEvent& ev) {
@@ -116,30 +115,32 @@ void FractalApp::handleInput(const KeyEvent& ev) {
 
     switch (ev.code) {
         case KeyCode::UP:
-            if (_mode == RenderMode::MandelbulbSlice) _sliceZ += 0.05f / _zoom;
-            else _centerY += panStep;
-            changed = true;
+            if (_mode == RenderMode::MandelbulbSlice) { _sliceZ += 0.05f / _zoom; changed = true; }
+            else { _centerY += panStep; shiftBuffer(0, 15); }
             break;
         case KeyCode::DOWN:
-            if (_mode == RenderMode::MandelbulbSlice) _sliceZ -= 0.05f / _zoom;
-            else _centerY -= panStep;
-            changed = true;
+            if (_mode == RenderMode::MandelbulbSlice) { _sliceZ -= 0.05f / _zoom; changed = true; }
+            else { _centerY -= panStep; shiftBuffer(0, -15); }
             break;
         case KeyCode::LEFT:
             _centerX -= panStep;
-            changed = true;
+            if (_mode == RenderMode::Mandelbrot) shiftBuffer(15, 0);
+            else changed = true;
             break;
         case KeyCode::RIGHT:
             _centerX += panStep;
-            changed = true;
+            if (_mode == RenderMode::Mandelbrot) shiftBuffer(-15, 0);
+            else changed = true;
             break;
         case KeyCode::ADD:
             _zoom *= 1.5f;
-            changed = true;
+            if (_mode == RenderMode::Mandelbrot) scaleBuffer(1.5f);
+            else changed = true;
             break;
         case KeyCode::SUB:
             _zoom /= 1.5f;
-            changed = true;
+            if (_mode == RenderMode::Mandelbrot) scaleBuffer(1.0f / 1.5f);
+            else changed = true;
             break;
         case KeyCode::MUL:
             _maxIter += 32;
@@ -210,34 +211,25 @@ void FractalApp::initializeBuffer() {
     _imgDsc.data = (const uint8_t*)_buffer.data();
 }
 
-void FractalApp::requestRender(bool full) {
+void FractalApp::renderFractal() {
     if (!_buffer.data()) return;
 
-    _abortRender = true;
+    _abortRequested = true;
+    while (!_isIdle) {
 #ifdef ARDUINO
-    while (!_renderAborted.load(std::memory_order_acquire)) vTaskDelay(1);
+        vTaskDelay(1);
+#else
+        break;
 #endif
+    }
     
-    _currentJob.centerX = _centerX;
-    _currentJob.centerY = _centerY;
-    _currentJob.zoom    = _zoom;
-    _currentJob.maxIter = _maxIter;
-    _currentJob.fullRender = full;
-    _currentJob.numRects = 0;
-
     lv_obj_remove_flag(_loadingLabel, LV_OBJ_FLAG_HIDDEN);
 
-    _abortRender = false;
-    _renderAborted = false;
+    _abortRequested = false;
 
 #ifdef ARDUINO
     if (!_renderTaskHandle) return;
 
-    _abortRequested = true;
-    while (!_isIdle) {
-        vTaskDelay(1);
-    }
-    _abortRequested = false;
     _renderComplete = false;
     _completedStrips = 0;
 
@@ -263,23 +255,28 @@ void FractalApp::requestRender(bool full) {
             SCREEN_W, CANVAS_H,
             _centerX, _centerY,
             _zoom, _maxIter,
-            true
+            0, 0, SCREEN_W, CANVAS_H, nullptr, true
         );
     }
 
     lv_image_set_src(_fractalImage, &_imgDsc);
     lv_obj_invalidate(_fractalImage);
-    requestRender(true);
+    lv_obj_add_flag(_loadingLabel, LV_OBJ_FLAG_HIDDEN);
+#endif
 }
 
 void FractalApp::shiftBuffer(int dx, int dy) {
     uint16_t* p = _buffer.data();
     if (!p) return;
 
-    _abortRender = true;
+    _abortRequested = true;
+    while (!_isIdle) {
 #ifdef ARDUINO
-    while (!_renderAborted.load(std::memory_order_acquire)) vTaskDelay(1);
+        vTaskDelay(1);
+#else
+        break;
 #endif
+    }
 
     if (dy != 0) {
         int rowBytes = SCREEN_W * sizeof(uint16_t);
@@ -297,26 +294,56 @@ void FractalApp::shiftBuffer(int dx, int dy) {
     lv_image_set_src(_fractalImage, &_imgDsc);
     lv_obj_invalidate(_fractalImage);
 
-    RenderRect rects[2];
-    int count = 0;
+    // After visually shifting, request a full background render for deep zoom precision
+    renderFractal();
+}
 
-    if (dy > 0) {
-        rects[count++] = {0, 0, SCREEN_W, dy};  // New top edge
-    } else if (dy < 0) {
-        rects[count++] = {0, CANVAS_H + dy, SCREEN_W, CANVAS_H}; // New bottom edge
+void FractalApp::scaleBuffer(float scaleFactor) {
+    uint16_t* p = _buffer.data();
+    if (!p) return;
+
+    _abortRequested = true;
+    while (!_isIdle) {
+#ifdef ARDUINO
+        vTaskDelay(1);
+#else
+        break;
+#endif
     }
 
-    if (dx > 0) {
-        int sy = (dy > 0) ? dy : 0;
-        int ey = (dy < 0) ? CANVAS_H + dy : CANVAS_H;
-        rects[count++] = {0, sy, dx, ey};
-    } else if (dx < 0) {
-        int sy = (dy > 0) ? dy : 0;
-        int ey = (dy < 0) ? CANVAS_H + dy : CANVAS_H;
-        rects[count++] = {SCREEN_W + dx, sy, SCREEN_W, ey};
+    // Allocate scratch PSRAM buffer
+    utils::PSRAMBuffer<uint16_t> scratch;
+    if (!scratch.allocate(SCREEN_W * CANVAS_H)) {
+        renderFractal();
+        return; 
     }
 
-    requestRenderRects(rects[0], rects[1], count);
+    uint16_t* s = scratch.data();
+    
+    float invScale = 1.0f / scaleFactor;
+    float cx = SCREEN_W / 2.0f;
+    float cy = CANVAS_H / 2.0f;
+
+    for (int y = 0; y < CANVAS_H; y++) {
+        for (int x = 0; x < SCREEN_W; x++) {
+            int srcX = (int)(cx + (x - cx) * invScale);
+            int srcY = (int)(cy + (y - cy) * invScale);
+
+            if (srcX >= 0 && srcX < SCREEN_W && srcY >= 0 && srcY < CANVAS_H) {
+                s[y * SCREEN_W + x] = p[srcY * SCREEN_W + srcX];
+            } else {
+                s[y * SCREEN_W + x] = 0x0000;
+            }
+        }
+    }
+
+    // Copy back
+    memcpy(p, s, SCREEN_W * CANVAS_H * sizeof(uint16_t));
+
+    lv_image_set_src(_fractalImage, &_imgDsc);
+    lv_obj_invalidate(_fractalImage);
+    
+    renderFractal();
 }
 
 void FractalApp::renderTaskWrapper(void* param) {

@@ -15,21 +15,6 @@
 
 #include <atomic>
 
-struct RenderRect {
-    int startX, startY;
-    int endX, endY;
-};
-
-struct RenderJob {
-    float centerX;
-    float centerY;
-    float zoom;
-    int maxIter;
-    bool fullRender;
-    RenderRect rects[2]; // At most 2 rectangles for L-shaped new regions
-    int numRects;
-};
-
 class FractalApp {
 public:
     enum class RenderMode : uint8_t {
@@ -86,11 +71,13 @@ private:
     volatile int  _totalStrips     = 0;
     volatile bool _rebaseRequired  = false;
 
+    std::atomic<bool> _taskShouldExit{false};
+    std::atomic<bool> _taskExited{false};
+
     void createUI();
     void initializeBuffer();
     // Replaced renderFractal() with these finer-grain methods
-    void requestRender(bool full);
-    void requestRenderRects(const RenderRect& r1, const RenderRect& r2, int count);
+    void renderFractal();
     void shiftBuffer(int dx, int dy);
     void scaleBuffer(float scaleFactor);
 
