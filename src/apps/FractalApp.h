@@ -32,6 +32,11 @@ struct RenderJob {
 
 class FractalApp {
 public:
+    enum class RenderMode : uint8_t {
+        Mandelbrot = 0,
+        MandelbulbSlice
+    };
+
     FractalApp();
     ~FractalApp();
 
@@ -39,6 +44,7 @@ public:
     void end();
     void load();
     void handleKey(const KeyEvent& ev);
+    void handleInput(const KeyEvent& ev);
 
     bool isActive() const { return _screen != nullptr; }
 
@@ -64,20 +70,21 @@ private:
     float _centerX;
     float _centerY;
     float _zoom;
+    float _sliceZ;
     int   _maxIter;
+    int   _mandelbulbPower;
+    RenderMode _mode;
 
     // Dual-core FreeRTOS rendering variables
     TaskHandle_t _renderTaskHandle = nullptr;
     lv_timer_t*  _updateTimer      = nullptr;
     volatile bool _renderRequested = false;
     volatile bool _renderComplete  = false;
-    
-    std::atomic<bool> _abortRender{false};
-    std::atomic<bool> _renderAborted{true};
-    std::atomic<bool> _taskShouldExit{false};
-    std::atomic<bool> _taskExited{false};
-
-    RenderJob             _currentJob;
+    volatile bool _abortRequested  = false;
+    volatile bool _isIdle          = true;
+    volatile int  _completedStrips = 0;
+    volatile int  _totalStrips     = 0;
+    volatile bool _rebaseRequired  = false;
 
     void createUI();
     void initializeBuffer();
