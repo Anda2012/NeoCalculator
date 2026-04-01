@@ -2,6 +2,7 @@
 #include "../input/KeyboardManager.h"
 #include <cstring>
 #include <new>
+#include <cmath>
 
 FractalApp::FractalApp() 
     : _screen(nullptr),
@@ -43,7 +44,12 @@ void FractalApp::begin() {
     _isIdle          = true;
     _completedStrips = 0;
     _totalStrips     = 0;
-    _rebaseRequired  = false;
+    _rebaseRequired  = true; // force clean first frame
+    _renderPass      = 0;
+    
+    // Explicitly reset the atomic exit flags! (Crucial for Deadlock Fix if re-entered)
+    _taskShouldExit.store(false, std::memory_order_relaxed);
+    _taskExited.store(false, std::memory_order_relaxed);
 
 #ifdef ARDUINO
     xTaskCreatePinnedToCore(
@@ -51,7 +57,7 @@ void FractalApp::begin() {
         "fractalTask",         // Name
         32768,                 // Increased stack size to 32KB (ReferenceOrbit is 32KB!)
         this,                  // Parameters
-        3,                     // Priority
+        1,                     // Lower Priority: 1 (Let Watchdog and IDLE Breathe!)
         &_renderTaskHandle,    // Task handle
         1                      // Core 1
     );
@@ -102,6 +108,13 @@ void FractalApp::load() {
     if (!_screen) {
         begin();
     }
+    
+    // Force a rigorous state machine reset to recover from dirty UI interrupts
+    _abortRequested = false;
+    _renderRequested = true;
+    _renderComplete = false;
+    _rebaseRequired = true;
+    _renderPass = 0;
     
     // Load screen into active display
     lv_screen_load(_screen);
@@ -243,6 +256,7 @@ void FractalApp::renderFractal() {
 
     _renderComplete = false;
     _completedStrips = 0;
+    _renderPass = 0; // Reset pass to 0 (Blocky 8x8 fast render)
 
     constexpr int STRIP_H = 16;
     _totalStrips = (CANVAS_H + STRIP_H - 1) / STRIP_H;
@@ -281,6 +295,7 @@ void FractalApp::shiftBuffer(int dx, int dy) {
     if (!p) return;
 
     _abortRequested = true;
+    _renderPass = 0; // Drop pass back to blocky pass instantly
     while (!_isIdle) {
 #ifdef ARDUINO
         vTaskDelay(1);
@@ -314,6 +329,7 @@ void FractalApp::scaleBuffer(float scaleFactor) {
     if (!p) return;
 
     _abortRequested = true;
+    _renderPass = 0; // Drop pass back to blocky pass instantly
     while (!_isIdle) {
 #ifdef ARDUINO
         vTaskDelay(1);
@@ -360,74 +376,94 @@ void FractalApp::scaleBuffer(float scaleFactor) {
 void FractalApp::renderTaskWrapper(void* param) {
 #ifdef ARDUINO
     FractalApp* app = static_cast<FractalApp*>(param);
-    while (true) {
-        ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+    
+    const int PASS_BLOCK_SIZES[] = {8, 4, 1};
+    constexpr int NUM_PASSES = 3;
 
-        // Immediate exit check
+    while (true) {
+        app->_isIdle = true;
+        ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+        app->_isIdle = false;
+
         if (app->_taskShouldExit.load(std::memory_order_relaxed)) {
             break;
         }
 
         if (app->_renderRequested && app->_buffer.data()) {
             app->_renderRequested = false;
-            app->_isIdle = false;
 
-            if (!app->_orbit) return; // safety check
+            if (!app->_orbit) {
+                app->_isIdle = true;
+                continue;
+            }
 
             constexpr int STRIP_H = 16;
+            
             if (app->_mode == RenderMode::Mandelbrot) {
-                FractalEngine::buildReferenceOrbit(*app->_orbit, (double)app->_centerX, (double)app->_centerY, app->_maxIter);
-            }
-
-            for (int y = 0; y < FractalApp::CANVAS_H; y += STRIP_H) {
-                if (app->_abortRequested) break;
-                int yEnd = y + STRIP_H;
-                if (yEnd > FractalApp::CANVAS_H) yEnd = FractalApp::CANVAS_H;
-
-                if (app->_mode == RenderMode::MandelbulbSlice) {
-                    FractalEngine::renderMandelbulbSliceStrip(
-                        app->_buffer.data(),
-                        FractalApp::SCREEN_W, FractalApp::CANVAS_H,
-                        app->_centerX, app->_centerY, app->_sliceZ,
-                        app->_zoom, app->_maxIter, app->_mandelbulbPower,
-                        y, yEnd,
-                        &app->_abortRequested,
-                        true
-                    );
-                } else {
-                    FractalEngine::renderMandelbrotPerturbationStrip(
-                        app->_buffer.data(),
-                        FractalApp::SCREEN_W, FractalApp::CANVAS_H,
-                        app->_centerX, app->_centerY,
-                        app->_zoom, app->_maxIter,
-                        y, yEnd,
-                        *app->_orbit,
-                        &app->_abortRequested,
-                        &app->_rebaseRequired,
-                        true
-                    );
-                    if (app->_rebaseRequired) {
-                        app->_rebaseRequired = false;
-                        FractalEngine::buildReferenceOrbit(
-                            *app->_orbit,
-                            (double)app->_centerX,
-                            (double)app->_centerY,
-                            app->_maxIter
-                        );
-                        y = -STRIP_H;
-                        app->_completedStrips = 0;
-                        continue;
-                    }
+                if (app->_zoom != app->_prevZoom || app->_maxIter != app->_prevMaxIter || app->_rebaseRequired) {
+                    FractalEngine::buildReferenceOrbit(*app->_orbit, (double)app->_centerX, (double)app->_centerY, app->_maxIter);
+                    app->_prevZoom = app->_zoom;
+                    app->_prevMaxIter = app->_maxIter;
+                    app->_rebaseRequired = false;
                 }
-                app->_completedStrips++;
             }
 
-            app->_isIdle = true;
-            if (!app->_abortRequested) {
-                app->_renderComplete = true; // Signal completion to LVGL timer
+            while (app->_renderPass < NUM_PASSES && !app->_abortRequested) {
+                int stepSize = PASS_BLOCK_SIZES[app->_renderPass];
+                
+                for (int y = 0; y < FractalApp::CANVAS_H; y += STRIP_H) {
+                    if (app->_abortRequested) break;
+                    
+                    int yEnd = y + STRIP_H;
+                    if (yEnd > FractalApp::CANVAS_H) yEnd = FractalApp::CANVAS_H;
+
+                    if (app->_mode == RenderMode::MandelbulbSlice) {
+                        FractalEngine::renderMandelbulbSliceStrip(
+                            app->_buffer.data(),
+                            FractalApp::SCREEN_W, FractalApp::CANVAS_H,
+                            app->_centerX, app->_centerY, app->_sliceZ,
+                            app->_zoom, app->_maxIter, app->_mandelbulbPower,
+                            y, yEnd,
+                            &app->_abortRequested,
+                            stepSize,
+                            true
+                        );
+                    } else {
+                        FractalEngine::renderMandelbrotPerturbationStrip(
+                            app->_buffer.data(),
+                            FractalApp::SCREEN_W, FractalApp::CANVAS_H,
+                            app->_centerX, app->_centerY,
+                            app->_zoom, app->_maxIter,
+                            y, yEnd,
+                            *app->_orbit,
+                            &app->_abortRequested,
+                            &app->_rebaseRequired,
+                            stepSize,
+                            true
+                        );
+                        
+                        if (app->_rebaseRequired) {
+                            app->_rebaseRequired = false;
+                            FractalEngine::buildReferenceOrbit(*app->_orbit, (double)app->_centerX, (double)app->_centerY, app->_maxIter);
+                            y = -STRIP_H;
+                            app->_completedStrips = 0;
+                            continue;
+                        }
+                    }
+                    app->_completedStrips++;
+                    vTaskDelay(1); // Heartbeat
+                }
+                
+                if (!app->_abortRequested) {
+                    app->_renderPass++;
+                    app->_renderComplete = true; 
+                }
             }
         }
+        app->_isIdle = true;
     }
+    app->_taskExited.store(true, std::memory_order_release);
+    vTaskDelete(NULL);
 #endif
 }
 

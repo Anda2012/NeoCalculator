@@ -70,6 +70,10 @@ private:
     volatile int  _completedStrips = 0;
     volatile int  _totalStrips     = 0;
     volatile bool _rebaseRequired  = false;
+    volatile int  _renderPass      = 0;
+
+    float _prevZoom = 0.0f;
+    int   _prevMaxIter = 0;
 
     std::atomic<bool> _taskShouldExit{false};
     std::atomic<bool> _taskExited{false};

@@ -1,6 +1,7 @@
 #include "FractalEngine.h"
 #include <cmath>
 #include <new>
+#include <cstring>
 
 // ── Simple RGB565 macro ──
 static inline uint16_t rgb565(uint8_t r, uint8_t g, uint8_t b) {
