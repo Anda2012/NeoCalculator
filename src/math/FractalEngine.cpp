@@ -45,6 +45,134 @@ inline void sinCosLut(float angle, float& s, float& c) {
     s = gTrigLut[idx].s;
     c = gTrigLut[idx].c;
 }
+
+inline int computeEscapeIterations(float x0,
+                                   float y0,
+                                   int maxIter,
+                                   FractalEngine::FractalType type,
+                                   float juliaCRe,
+                                   float juliaCIm) {
+    float zr = 0.0f;
+    float zi = 0.0f;
+    float cRe = x0;
+    float cIm = y0;
+
+    if (type == FractalEngine::FractalType::Julia) {
+        zr = x0;
+        zi = y0;
+        cRe = juliaCRe;
+        cIm = juliaCIm;
+    }
+
+    int iter = 0;
+    while (iter < maxIter) {
+        float nextRe = 0.0f;
+        float nextIm = 0.0f;
+
+        if (type == FractalEngine::FractalType::BurningShip) {
+            float ar = fabsf(zr);
+            float ai = fabsf(zi);
+            nextRe = ar * ar - ai * ai + cRe;
+            nextIm = 2.0f * ar * ai + cIm;
+        } else {
+            nextRe = zr * zr - zi * zi + cRe;
+            nextIm = 2.0f * zr * zi + cIm;
+        }
+
+        zr = nextRe;
+        zi = nextIm;
+
+        if ((zr * zr + zi * zi) > 4.0f) {
+            break;
+        }
+        ++iter;
+    }
+
+    return iter;
+}
+}
+
+void FractalEngine::renderFractalStrip(
+    uint16_t* buffer,
+    int width,
+    int height,
+    FractalType type,
+    float centerX,
+    float centerY,
+    float zoom,
+    int maxIter,
+    int yStart,
+    int yEnd,
+    volatile bool* abortRequested,
+    int step,
+    bool invertY,
+    float juliaCRe,
+    float juliaCIm,
+    float sliceZ,
+    int power
+) {
+    if (!buffer || width <= 0 || height <= 0 || yStart < 0 || yEnd > height || yStart >= yEnd) {
+        return;
+    }
+    if (width > 320) {
+        return;
+    }
+
+    if (type == FractalType::Mandelbulb3D) {
+        renderMandelbulbSliceStrip(
+            buffer,
+            width,
+            height,
+            centerX,
+            centerY,
+            sliceZ,
+            zoom,
+            maxIter,
+            power,
+            yStart,
+            yEnd,
+            abortRequested,
+            step,
+            invertY
+        );
+        return;
+    }
+
+    float aspect = (float)width / (float)height;
+    float windowW = 3.0f / zoom;
+    float windowH = windowW / aspect;
+    float xMin = centerX - windowW * 0.5f;
+    float yMin = centerY - windowH * 0.5f;
+    float dx = windowW / (float)width;
+    float dy = windowH / (float)height;
+    int checkCounter = 0;
+
+    uint16_t rowBuffer[320];
+
+    for (int py = yStart; py < yEnd; py += step) {
+        float cy = yMin + py * dy;
+
+        for (int px = 0; px < width; px += step) {
+            if (abortRequested && (++checkCounter >= kAbortCheckInterval)) {
+                checkCounter = 0;
+                if (*abortRequested) return;
+            }
+
+            float cx = xMin + px * dx;
+            int iter = computeEscapeIterations(cx, cy, maxIter, type, juliaCRe, juliaCIm);
+            uint16_t color = mapColor(iter, maxIter);
+
+            for (int dxP = 0; dxP < step && (px + dxP) < width; ++dxP) {
+                rowBuffer[px + dxP] = color;
+            }
+        }
+
+        for (int stepY = 0; stepY < step && (py + stepY) < yEnd; ++stepY) {
+            int targetY = py + stepY;
+            int screenY = invertY ? (height - 1 - targetY) : targetY;
+            memcpy(&buffer[screenY * width], rowBuffer, width * sizeof(uint16_t));
+        }
+    }
 }
 
 void FractalEngine::renderMandelbrot(uint16_t* buffer, int width, int height, 

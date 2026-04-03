@@ -60,8 +60,8 @@ export default function BentoGrid() {
             colSpan="md:col-span-1"
           />
           <BentoCard 
-            title="Open Source (OSHWA)" 
-            description="Hardware and software that belongs to everyone. OSHWA certified, providing complete transparency and the ability to customize or repair every single component."
+            title="Open Source" 
+            description="Hardware and software that belongs to everyone. Waiting to be OSHWA certified, providing complete transparency and the ability to customize or repair every single component."
             highlight="100% OPEN"
             colSpan="md:col-span-2"
           />

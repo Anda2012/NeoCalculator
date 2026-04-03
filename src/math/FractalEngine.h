@@ -5,10 +5,41 @@
 
 class FractalEngine {
 public:
+    enum class FractalType : uint8_t {
+        Mandelbrot = 0,
+        Julia,
+        BurningShip,
+        Mandelbulb3D
+    };
+
     struct ReferenceOrbitPoint {
         double re;
         double im;
     };
+
+    /**
+     * Generic strip renderer routed by fractal type.
+     * For Mandelbulb3D, this delegates to the 3D slice renderer.
+     */
+    static void renderFractalStrip(
+        uint16_t* buffer,
+        int width,
+        int height,
+        FractalType type,
+        float centerX,
+        float centerY,
+        float zoom,
+        int maxIter,
+        int yStart,
+        int yEnd,
+        volatile bool* abortRequested,
+        int step = 1,
+        bool invertY = true,
+        float juliaCRe = -0.8f,
+        float juliaCIm = 0.156f,
+        float sliceZ = 0.0f,
+        int power = 8
+    );
 
     struct ReferenceOrbit {
         static constexpr int MAX_POINTS = 2048;

@@ -230,7 +230,8 @@ void SystemApp::update() {
     } else if (_mode == Mode::APP_NEO_LANGUAGE) {
         // LVGL handles NeoLanguageApp rendering
     } else if (_mode == Mode::APP_FRACTAL) {
-        // LVGL handles FractalApp rendering
+        // FractalApp has a small update state machine (safe transitions + render polling).
+        if (_fractalApp) _fractalApp->update();
     } else if (_mode == Mode::MENU) {
         // LVGL maneja el renderizado del menú via lv_timer_handler() en main.cpp
         _redraw = false;
@@ -581,10 +582,13 @@ void SystemApp::handleKey(const KeyEvent &ev) {
             break;
         // FractalApp is LVGL-native
         case Mode::APP_FRACTAL:
-            if (ev.code == KeyCode::MODE || ev.code == KeyCode::AC) {
+            if (ev.code == KeyCode::AC) {
                 returnToMenu();
             } else if (_fractalApp) {
                 _fractalApp->handleKey(ev);
+                if (_fractalApp->consumeExitRequest()) {
+                    returnToMenu();
+                }
             }
             break;
         case Mode::APP_TABLE:
