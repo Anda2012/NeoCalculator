@@ -1302,15 +1302,19 @@ void EquationsApp::update() {
                         auto eqFlat = flattener.flattenEquation(lhsTree.get(), rhsTree.get());
                         if (eqFlat.ok && !eqFlat.transcendental) {
                             cas::PedagogicalLogger tutorLog;
-                            const int16_t degree = eqFlat.eq.moveAllToLHS().lhs.degree();
+                            const cas::SymEquation normalizedEq = eqFlat.eq.moveAllToLHS();
+                            const int16_t degree = normalizedEq.lhs.degree();
+                            bool ranTutor = false;
                             if (degree == 2) {
                                 _stepsTutorResult = cas::solveQuadraticTutor(eqFlat.eq, _stepsVar1,
                                                                              tutorLog, &_arena);
-                                _stepsTutorResult.steps = std::move(tutorLog);
-                                _stepsTutorActive = _stepsTutorResult.ok;
+                                ranTutor = true;
                             } else if (degree == 3) {
                                 _stepsTutorResult = cas::solveCubicTutor(eqFlat.eq, _stepsVar1,
                                                                          tutorLog, &_arena);
+                                ranTutor = true;
+                            }
+                            if (ranTutor) {
                                 _stepsTutorResult.steps = std::move(tutorLog);
                                 _stepsTutorActive = _stepsTutorResult.ok;
                             }
@@ -1399,14 +1403,11 @@ void EquationsApp::update() {
                     ++rendered;
                 }
 
-                while (_stepsTutorActive &&
-                       (_stepsRenderIndex - 1) >= _casResult.steps.size() &&
-                       (_stepsRenderIndex - 1 - _casResult.steps.size()) <
-                           _stepsTutorResult.steps.count() &&
-                       rendered < kRenderBudgetPerTick)
-                {
-                    const std::size_t tutorIdx =
-                        (_stepsRenderIndex - 1 - _casResult.steps.size());
+                const std::size_t casStepCount = _casResult.steps.size();
+                while (_stepsTutorActive && rendered < kRenderBudgetPerTick) {
+                    if ((_stepsRenderIndex - 1) < casStepCount) break;
+                    const std::size_t tutorIdx = (_stepsRenderIndex - 1) - casStepCount;
+                    if (tutorIdx >= _stepsTutorResult.steps.count()) break;
                     const auto& step = _stepsTutorResult.steps.steps()[tutorIdx];
                     const bool isFinal =
                         (tutorIdx + 1 == _stepsTutorResult.steps.count()) &&
