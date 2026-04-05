@@ -19,6 +19,7 @@
 #include "AstDiff.h"
 #include <algorithm>
 #include <cassert>
+#include <unordered_set>
 
 #ifdef ARDUINO
 #include <freertos/FreeRTOS.h>
@@ -37,6 +38,23 @@ static inline void cooperativeYield() {
 #else
     std::this_thread::yield();
 #endif
+}
+
+static std::string canonicalTreeSignature(const NodePtr& node) {
+    return node ? node->toString() : std::string("<null>");
+}
+
+static bool noProgress(const NodePtr& before, const NodePtr& after) {
+    if (!before || !after) {
+        return before == after;
+    }
+    if (before.get() == after.get()) {
+        return true;
+    }
+    if (before->equals(*after)) {
+        return true;
+    }
+    return canonicalTreeSignature(before) == canonicalTreeSignature(after);
 }
 
 } // namespace
@@ -692,9 +710,11 @@ RuleEngine::SolveResult RuleEngine::applyToFixedPoint(const NodePtr& root,
                                                         std::size_t maxSteps)
 {
     SolveResult solveResult;
-    solveResult.reachedFixedPoint = false;
-
     NodePtr current = root;
+    std::string currentSig = canonicalTreeSignature(current);
+
+    std::unordered_set<std::string> seenSignatures;
+    seenSignatures.insert(currentSig);
 
     for (std::size_t step = 0; step < maxSteps; ++step) {
         RewriteResult r = applyOneStep(current);
@@ -702,6 +722,13 @@ RuleEngine::SolveResult RuleEngine::applyToFixedPoint(const NodePtr& root,
             solveResult.reachedFixedPoint = true;
             break;
         }
+
+        const std::string nextSig = canonicalTreeSignature(r.newTree);
+        if (noProgress(current, r.newTree) || nextSig == currentSig) {
+            solveResult.haltedByNoProgress = true;
+            break;
+        }
+
         StepLog log;
         log.ruleName     = std::move(r.ruleName);
         log.ruleDesc     = std::move(r.ruleDesc);
@@ -709,13 +736,29 @@ RuleEngine::SolveResult RuleEngine::applyToFixedPoint(const NodePtr& root,
         log.tree         = r.newTree;
         log.affectedNode = r.affectedNode;
         solveResult.steps.push_back(std::move(log));
+
         current = r.newTree;
+        currentSig = nextSig;
+
+        if (!seenSignatures.insert(currentSig).second) {
+            solveResult.haltedByCycle = true;
+            break;
+        }
 
         // Cooperative checkpoint to avoid starving scheduler/WDT under
         // long rewrite chains.
         if ((step % 8U) == 0U) {
             cooperativeYield();
         }
+    }
+
+    if (!solveResult.reachedFixedPoint &&
+        !solveResult.haltedByNoProgress &&
+        !solveResult.haltedByCycle &&
+        maxSteps > 0U &&
+        solveResult.steps.size() >= maxSteps)
+    {
+        solveResult.hitStepLimit = true;
     }
 
     solveResult.finalTree = current;

@@ -357,7 +357,10 @@ public:
     struct SolveResult {
         NodePtr               finalTree;
         std::vector<StepLog>  steps;
-        bool                  reachedFixedPoint;  ///< True if stopped naturally
+        bool                  reachedFixedPoint = false;  ///< True if stopped naturally
+        bool                  haltedByNoProgress = false; ///< Rewrite fired but tree made no progress
+        bool                  haltedByCycle = false;      ///< Reached a previously seen canonical state
+        bool                  hitStepLimit = false;       ///< Stopped due to maxSteps guard
     };
     SolveResult applyToFixedPoint(const NodePtr& root, std::size_t maxSteps = 100);
 

@@ -17,8 +17,44 @@
 #include "SymExprArena.h"
 #include "CASNumber.h"
 #include <cmath>
+#include <unordered_set>
 
 namespace cas {
+
+namespace {
+
+static constexpr std::size_t MAX_REWRITE_STEPS = 20U;
+
+template <typename Transform>
+static SymEquation runBoundedPhase(const SymEquation& input,
+                                   Transform&& transform,
+                                   std::size_t maxSteps = MAX_REWRITE_STEPS) {
+    SymEquation current = input;
+    std::string currentSig = current.toString();
+
+    std::unordered_set<std::string> seen;
+    seen.insert(currentSig);
+
+    for (std::size_t i = 0; i < maxSteps; ++i) {
+        SymEquation next = transform(current);
+        std::string nextSig = next.toString();
+
+        if (nextSig == currentSig) {
+            break;
+        }
+        if (!seen.insert(nextSig).second) {
+            current = std::move(next);
+            break;
+        }
+
+        current = std::move(next);
+        currentSig = std::move(nextSig);
+    }
+
+    return current;
+}
+
+} // namespace
 
 // ════════════════════════════════════════════════════════════════════
 // Helpers
@@ -98,7 +134,9 @@ SolveResult solveEquationStepByStep(const SymEquation& eq, char var,
                   ActionContext().var(var).snap(&eq), MethodId::General);
 
     // ── Rule 1: Expand (normalize each side independently) ───────────
-    SymEquation step1 = expandAndCombine(eq);
+    SymEquation step1 = runBoundedPhase(eq, [](const SymEquation& in) {
+        return expandAndCombine(in);
+    });
     bool expandChanged = (step1.toString() != eq.toString());
     if (expandChanged) {
         log.logAction(SolveAction::PRE_DISTRIBUTE,
@@ -106,12 +144,9 @@ SolveResult solveEquationStepByStep(const SymEquation& eq, char var,
     }
 
     // ── Rule 2: Combine like terms on each side ──────────────────────
-    // (Already done by expandAndCombine above; log if not already logged)
-    SymPoly lhs2 = step1.lhs;
-    SymPoly rhs2 = step1.rhs;
-    lhs2.normalize();
-    rhs2.normalize();
-    SymEquation step2(lhs2, rhs2);
+    SymEquation step2 = runBoundedPhase(step1, [](const SymEquation& in) {
+        return expandAndCombine(in);
+    });
     bool combineChanged = (step2.toString() != step1.toString());
     if (combineChanged) {
         log.logAction(SolveAction::PRE_COMBINE_TERMS,
@@ -133,7 +168,9 @@ SolveResult solveEquationStepByStep(const SymEquation& eq, char var,
     }
 
     // ── Rule 3: Isolate variable terms on LHS, constants on RHS ─────
-    SymEquation step3 = isolateVariable(step2, var);
+    SymEquation step3 = runBoundedPhase(step2, [var](const SymEquation& in) {
+        return isolateVariable(in, var);
+    });
     bool isolateChanged = (step3.toString() != step2.toString());
     if (isolateChanged) {
         log.logAction(SolveAction::LINEAR_ISOLATE_VARIABLE,
@@ -141,7 +178,9 @@ SolveResult solveEquationStepByStep(const SymEquation& eq, char var,
     }
 
     // ── Rule 4: Combine again ────────────────────────────────────────
-    SymEquation step4 = expandAndCombine(step3);
+    SymEquation step4 = runBoundedPhase(step3, [](const SymEquation& in) {
+        return expandAndCombine(in);
+    });
     bool combineAgainChanged = (step4.toString() != step3.toString());
     if (combineAgainChanged) {
         log.logAction(SolveAction::PRE_COMBINE_TERMS,
