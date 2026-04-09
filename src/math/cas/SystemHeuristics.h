@@ -9,7 +9,7 @@
  *
  * Default fallback is SUBSTITUTION.
  *
- * Part of: NumOS CAS-S3-ULTRA — Phase 15 (System Solver)
+ * Part of: NumOS CAS-S3 — Phase 15 (System Solver)
  */
 
 #pragma once

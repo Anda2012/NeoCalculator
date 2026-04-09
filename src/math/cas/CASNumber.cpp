@@ -13,7 +13,7 @@
  *   sqrt(50)  →  5·sqrt(2)     (50 = 25·2)
  *   sqrt(49)  →  7             (perfect square)
  *
- * Part of: NumOS CAS-S3-ULTRA — Pilar 1 (Infinite Precision)
+ * Part of: NumOS CAS-S3 — Pilar 1 (Infinite Precision)
  */
 
 #include "CASNumber.h"

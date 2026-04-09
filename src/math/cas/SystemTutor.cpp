@@ -1,7 +1,7 @@
 /**
  * SystemTutor.cpp — Step-by-step 2×2 CAS system orchestrator.
  *
- * Part of: NumOS CAS-S3-ULTRA — Phase 15 (System Solver)
+ * Part of: NumOS CAS-S3 — Phase 15 (System Solver)
  */
 
 #include "SystemTutor.h"

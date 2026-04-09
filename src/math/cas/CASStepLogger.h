@@ -20,7 +20,7 @@
  * All steps are stored in PSRAM via PSRAMAllocator to free internal
  * SRAM for LVGL and real-time tasks.
  *
- * Part of: NumOS CAS-S3-ULTRA — Phase C+
+ * Part of: NumOS CAS-S3 — Phase C+
  */
 
 #pragma once

@@ -4,7 +4,7 @@
  * Uses pointer identity (NodePtr comparison) to skip unchanged branches in O(1),
  * then descends into children to pinpoint the smallest changed sub-tree.
  *
- * Part of: NumOS CAS-S3-ULTRA — Phase 13B (Algebraic Brain & Smart Diffing)
+ * Part of: NumOS CAS-S3 — Phase 13B (Algebraic Brain & Smart Diffing)
  */
 
 #include "AstDiff.h"

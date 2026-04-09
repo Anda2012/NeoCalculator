@@ -6,7 +6,7 @@
  * each .h in the source tree) and can be used to anchor any out-of-line
  * definitions that may be added in the future.
  *
- * Part of: NumOS CAS-S3-ULTRA — Phase 13A (TRS Infrastructure)
+ * Part of: NumOS CAS-S3 — Phase 13A (TRS Infrastructure)
  */
 
 #include "CasMemory.h"

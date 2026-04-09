@@ -1,11 +1,11 @@
 /**
  * TutorTemplates.cpp — Educational step-by-step solver templates.
  *
- * This file implements the "Tutor Engine" for the NumOS CAS-S3-ULTRA.
+ * This file implements the "Tutor Engine" for the NumOS CAS-S3.
  * It intercept equations before they are sent to the compact solvers
  * and elaborates a full, human-like step-by-step resolution.
  *
- * Part of: NumOS CAS-S3-ULTRA — Pilar 2 (Super Detail Steps)
+ * Part of: NumOS CAS-S3 — Pilar 2 (Super Detail Steps)
  */
 
 #include "TutorTemplates.h"

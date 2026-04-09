@@ -15,7 +15,7 @@
  * This ensures dynamic, correct steps for equations such as:
  *   3x - 2 = x + 6  →  2x = 8  →  x = 4
  *
- * Part of: NumOS CAS-S3-ULTRA — Phase 12 (True Rule-Based CAS Engine)
+ * Part of: NumOS CAS-S3 — Phase 12 (True Rule-Based CAS Engine)
  */
 
 #pragma once

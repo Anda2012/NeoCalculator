@@ -51,7 +51,7 @@
  *   std::pmr types are used directly.  Older toolchains (e.g. Arduino-ESP32
  *   with GCC 8.x) use the drop-in cas::pmr fallback defined in this header.
  *
- * Part of: NumOS CAS-S3-ULTRA — Phase 13A (TRS Infrastructure)
+ * Part of: NumOS CAS-S3 — Phase 13A (TRS Infrastructure)
  */
 
 #pragma once

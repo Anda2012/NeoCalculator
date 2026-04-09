@@ -78,7 +78,7 @@
 
 | Feature | Description |
 |:--------|:------------|
-| **CAS-S3-ULTRA Engine** | Sylvester Resultant solver (3×3 NL systems), 16-seed Newton-Raphson, BigInt precision (`CASInt` + `CASRational`), hash-consed DAG, 8-pass fixed-point simplifier, PSRAM-backed step logger |
+| **CAS-S3 Engine** | Sylvester Resultant solver (3×3 NL systems), 16-seed Newton-Raphson, BigInt precision (`CASInt` + `CASRational`), hash-consed DAG, 8-pass fixed-point simplifier, PSRAM-backed step logger |
 | **Unified Calculus App** | Symbolic $d/dx$ differentiation (17 rules) and numerical/symbolic $\int dx$ integration (Slagle heuristic: table lookup, linearity, u-substitution, integration by parts/LIATE), tab-based mode switching, automatic simplification, and detailed step-by-step output |
 | **EquationsApp** | Solves linear, quadratic, and 2×2 systems (linear + non-linear via Sylvester resultant) with full step-by-step display |
 | **Bridge Designer** | Real-time structural bridge simulator with Verlet integration physics, stress analysis (green→red beam visualisation), snap-to-grid editor, wood/steel/cable materials, and truck/car load testing — PSRAM-backed, 60 Hz fixed timestep |
@@ -519,7 +519,7 @@ Issues discovered and resolved during bring-up. **Essential** for any fork or ne
 | **Phase 3** | Launcher 3.0, SerialBridge, CalculationApp history, GrapherApp zoom/pan | ✅ Complete |
 | **Phase 4** | LVGL 9.x — ESP32-S3 HW bring-up, DMA, animated splash screen, icon launcher | ✅ Complete |
 | **Phase 5** | CAS-Lite Engine (SymPoly, SingleSolver, SystemSolver, 53 tests) + EquationsApp UI | ✅ Complete |
-| **CAS** | CAS-S3-ULTRA: BigNum, hash-consed DAG, SymDiff 17 rules, SymIntegrate Slagle, SymSimplify 8-pass, OmniSolver, Unified CalculusApp (d/dx + ∫dx), SettingsApp | ✅ **Complete** |
+| **CAS** | CAS-S3: BigNum, hash-consed DAG, SymDiff 17 rules, SymIntegrate Slagle, SymSimplify 8-pass, OmniSolver, Unified CalculusApp (d/dx + ∫dx), SettingsApp | ✅ **Complete** |
 | **Phase 6** | Statistics, Regression, Sequences, Probability, Matrices, Bridge Designer | ✅ **Complete** |
 | **Simulations** | ParticleLab (30+ materials, electronics), CircuitCore (SPICE), Fluid2D (Navier-Stokes) | ✅ **Complete** |
 | **Phase 7** | Complex numbers, base conversions | 🔲 Planned |

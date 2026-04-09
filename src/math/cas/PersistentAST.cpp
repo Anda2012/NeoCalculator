@@ -6,7 +6,7 @@
  *   · equals() deep structural comparison
  *   · Factory functions that enforce invariants and COW helpers
  *
- * Part of: NumOS CAS-S3-ULTRA — Phase 13A (TRS Infrastructure)
+ * Part of: NumOS CAS-S3 — Phase 13A (TRS Infrastructure)
  */
 
 #include "PersistentAST.h"

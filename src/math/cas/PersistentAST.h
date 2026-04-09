@@ -53,7 +53,7 @@
  *   makePower(pool, base, exponent)           → NodePtr
  *   makeEquation(pool, lhs, rhs)              → NodePtr
  *
- * Part of: NumOS CAS-S3-ULTRA — Phase 13A (TRS Infrastructure)
+ * Part of: NumOS CAS-S3 — Phase 13A (TRS Infrastructure)
  */
 
 #pragma once

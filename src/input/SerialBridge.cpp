@@ -7,6 +7,8 @@
 #include "SerialBridge.h"
 #include "math/giac/GiacBridge.h"
 #include <ctype.h>
+#include <string>
+#include <algorithm>
 
 SerialBridge::SerialBridge()
     : _head(0), _tail(0)
@@ -87,139 +89,136 @@ bool SerialBridge::pollEvent(KeyEvent &outEvent) {
 // ── Character → KeyCode mapping ──
 
 void SerialBridge::processChar(int ch) {
-    // Line buffer for optional line-commands (e.g., "CAS: expr")
-    static char lineBuf[256];
-    static int  linePos = 0;
+    // Use a std::string buffer to accumulate characters until newline.
+    static std::string inputBuffer;
+    static unsigned long lastEnterMs = 0;
 
-    // Echo the raw received character (confirms S3 received data)
+    // Echo and accumulate printable characters
     if (ch >= 0x20 && ch <= 0x7E) {
         Serial.printf("[SB] RX: '%c' (0x%02X)\n", (char)ch, ch);
-        // Append to line buffer for potential line-based command
-        if (linePos < (int)(sizeof(lineBuf) - 1)) lineBuf[linePos++] = (char)ch;
+        if (inputBuffer.size() < 255) inputBuffer.push_back((char)ch);
     } else {
         Serial.printf("[SB] RX: 0x%02X\n", ch);
+        // Backspace/delete should edit the current buffer if present
+        if ((ch == 8 || ch == 127) && !inputBuffer.empty()) {
+            inputBuffer.pop_back();
+            Serial.println("[SB] (buffer) DEL");
+        }
     }
 
-    // Deduplicate \r\n: if we get \n within 50ms of \r, skip it
-    static unsigned long lastEnterMs = 0;
+    // Handle Enter / newline (debounce CR+LF pairs)
     if (ch == '\r' || ch == '\n') {
         unsigned long now = millis();
         if (now - lastEnterMs < 50) {
-            // clear buffer on duplicate newline
-            linePos = 0;
+            // duplicate newline from CR/LF, ignore
             return;
         }
         lastEnterMs = now;
 
-        // Null-terminate and inspect the buffered line
-        if (linePos > 0) {
-            lineBuf[linePos] = '\0';
-            char* p = lineBuf;
-            // Skip leading whitespace
-            while (*p && isspace((unsigned char)*p)) ++p;
-            // Case-insensitive check for "CAS:"
-            if ((toupper((unsigned char)p[0]) == 'C') && (toupper((unsigned char)p[1]) == 'A') &&
-                (toupper((unsigned char)p[2]) == 'S') && (p[3] == ':')) {
-                char* expr = p + 4;
-                while (*expr && isspace((unsigned char)*expr)) ++expr;
-                String in(expr);
-                String out = solveWithGiac(in);
-                Serial.print("[CAS] => ");
-                Serial.println(out);
-                linePos = 0;
-                return; // command handled
-            }
+        // Trim leading/trailing whitespace
+        auto lpos = inputBuffer.find_first_not_of(" \t\r\n");
+        auto rpos = inputBuffer.find_last_not_of(" \t\r\n");
+        std::string line;
+        if (lpos == std::string::npos) {
+            // Empty line -> treat as ENTER key
+            inputBuffer.clear();
+            push(KeyCode::ENTER, "ENTER (PC-Enter)");
+            return;
+        } else {
+            line = inputBuffer.substr(lpos, rpos - lpos + 1);
         }
 
-        // Default behaviour: emit ENTER event and clear line buffer
-        linePos = 0;
-        push(KeyCode::ENTER, "ENTER (PC-Enter)");
+        // If line starts with ':' → Giac command
+        if (!line.empty() && line[0] == ':') {
+            std::string expr = line.substr(1);
+            // trim leading spaces from expr
+            auto ep = expr.find_first_not_of(" \t");
+            if (ep != std::string::npos) expr = expr.substr(ep);
+            String in(expr.c_str());
+            String out = solveWithGiac(in);
+            Serial.print(": => ");
+            Serial.println(out);
+            inputBuffer.clear();
+            return;
+        }
+
+        // Case-insensitive keyword checks (HOME, AC, DEL, ENTER, EXE, F1, F2)
+        std::string upper = line;
+        std::transform(upper.begin(), upper.end(), upper.begin(), [](unsigned char c){ return std::toupper(c); });
+        if (upper == "HOME") { push(KeyCode::MODE, "MODE/HOME"); inputBuffer.clear(); return; }
+        if (upper == "AC")   { push(KeyCode::AC, "AC"); inputBuffer.clear(); return; }
+        if (upper == "DEL")  { push(KeyCode::DEL, "DEL"); inputBuffer.clear(); return; }
+        if (upper == "ENTER") { push(KeyCode::ENTER, "ENTER (PC-Enter)"); inputBuffer.clear(); return; }
+        if (upper == "EXE")  { push(KeyCode::EXE, "EXE"); inputBuffer.clear(); return; }
+        if (upper == "F1")   { push(KeyCode::F1, "F1"); inputBuffer.clear(); return; }
+        if (upper == "F2")   { push(KeyCode::F2, "F2"); inputBuffer.clear(); return; }
+
+        // Single character line: map to key codes (preserve previous mappings)
+        if (line.size() == 1) {
+            char c = line[0];
+            switch (c) {
+                case 'w': case 'W': push(KeyCode::UP,    "UP");    break;
+                case 'a':           push(KeyCode::LEFT,  "LEFT");  break;
+                case 'd': case 'D': push(KeyCode::RIGHT, "RIGHT"); break;
+                case 's':           push(KeyCode::DOWN,  "DOWN");  break;
+
+                case 'S':  push(KeyCode::SHIFT, "SHIFT"); break;
+                case 'A':  push(KeyCode::ALPHA, "ALPHA"); break;
+
+                case 8: case 127: push(KeyCode::DEL, "DEL"); break;
+                case 0x1B:      push(KeyCode::AC,    "AC");        break;
+                case 'c':       push(KeyCode::AC,    "AC");        break;
+                case 'h': case 'H': push(KeyCode::MODE,  "MODE/HOME"); break;
+                case 'b': case 'B': push(KeyCode::AC,    "BACK (AC)"); break;
+
+                case '0': push(KeyCode::NUM_0, "0"); break;
+                case '1': push(KeyCode::NUM_1, "1"); break;
+                case '2': push(KeyCode::NUM_2, "2"); break;
+                case '3': push(KeyCode::NUM_3, "3"); break;
+                case '4': push(KeyCode::NUM_4, "4"); break;
+                case '5': push(KeyCode::NUM_5, "5"); break;
+                case '6': push(KeyCode::NUM_6, "6"); break;
+                case '7': push(KeyCode::NUM_7, "7"); break;
+                case '8': push(KeyCode::NUM_8, "8"); break;
+                case '9': push(KeyCode::NUM_9, "9"); break;
+
+                case '+': push(KeyCode::ADD, "+"); break;
+                case '-': push(KeyCode::SUB, "-"); break;
+                case '*': push(KeyCode::MUL, "*"); break;
+                case '/': push(KeyCode::DIV, "/"); break;
+                case '.': push(KeyCode::DOT, "."); break;
+                case '(' : push(KeyCode::LPAREN, "("); break;
+                case ')' : push(KeyCode::RPAREN, ")"); break;
+
+                case 'p': case '^': push(KeyCode::POW, "POW"); break;
+                case '=': push(KeyCode::FREE_EQ, "="); break;
+                case 'f': push(KeyCode::DIV, "DIV (FRAC)"); break;
+                case 'x': push(KeyCode::VAR_X, "VAR_X"); break;
+                case 'y': push(KeyCode::VAR_Y, "VAR_Y"); break;
+                case 'g': push(KeyCode::GRAPH, "GRAPH"); break;
+                case 't': push(KeyCode::SIN,   "SIN");   break;
+                case 'r': push(KeyCode::SQRT,  "SQRT");  break;
+                case 'R':  push(KeyCode::SHIFT, "SHIFT"); push(KeyCode::SQRT, "SQRT (=nthROOT)"); break;
+                case 'n':  push(KeyCode::SHOW_STEPS, "STEPS"); break;
+                case 'u':  push(KeyCode::FREE_EQ, "= (FREE_EQ)"); break;
+                case 'C':  push(KeyCode::AC, "AC"); break;
+                case '<':  push(KeyCode::EXE, "EXE"); break;
+                case 'F':  push(KeyCode::F1, "F1"); break;
+                case 'G':  push(KeyCode::F2, "F2"); break;
+                default:
+                    // Unrecognized single char: echo it
+                    Serial.print("[SB] Unmapped char: ");
+                    Serial.println(line.c_str());
+                    break;
+            }
+            inputBuffer.clear();
+            return;
+        }
+
+        // Unrecognized multi-char line: echo back and clear
+        Serial.print("[SB] Unrecognized line: ");
+        Serial.println(line.c_str());
+        inputBuffer.clear();
         return;
-    }
-
-    switch (ch) {
-        // ── Navigation (WASD) ──
-        case 'w': case 'W': push(KeyCode::UP,    "UP");    break;
-        case 'a':           push(KeyCode::LEFT,  "LEFT");  break;
-        case 'd': case 'D': push(KeyCode::RIGHT, "RIGHT"); break;
-        case 's':           push(KeyCode::DOWN,  "DOWN");  break;
-
-        // ── Modifiers ──
-        case 'S':  push(KeyCode::SHIFT, "SHIFT"); break;
-        case 'A':  push(KeyCode::ALPHA, "ALPHA"); break;
-
-        // ── Actions ──
-        case 8:             // Backspace (ASCII 8)
-        case 127:           // Delete (ASCII 127)
-            push(KeyCode::DEL, "DEL"); break;
-        case 0x1B:          // Escape
-        case 'c':           push(KeyCode::AC,    "AC");        break;
-        case 'h': case 'H': push(KeyCode::MODE,  "MODE/HOME"); break;
-        case 'b': case 'B': push(KeyCode::AC,    "BACK (AC)"); break;
-
-        // ── Digits ──
-        case '0': push(KeyCode::NUM_0, "0"); break;
-        case '1': push(KeyCode::NUM_1, "1"); break;
-        case '2': push(KeyCode::NUM_2, "2"); break;
-        case '3': push(KeyCode::NUM_3, "3"); break;
-        case '4': push(KeyCode::NUM_4, "4"); break;
-        case '5': push(KeyCode::NUM_5, "5"); break;
-        case '6': push(KeyCode::NUM_6, "6"); break;
-        case '7': push(KeyCode::NUM_7, "7"); break;
-        case '8': push(KeyCode::NUM_8, "8"); break;
-        case '9': push(KeyCode::NUM_9, "9"); break;
-
-        // ── Operators ──
-        case '+': push(KeyCode::ADD, "+"); break;
-        case '-': push(KeyCode::SUB, "-"); break;
-        case '*': push(KeyCode::MUL, "*"); break;
-        case '/': push(KeyCode::DIV, "/"); break;
-        case '.': push(KeyCode::DOT, "."); break;
-        case '(': push(KeyCode::LPAREN, "("); break;
-        case ')': push(KeyCode::RPAREN, ")"); break;
-
-        // ── Power: 'p' or '^' ──
-        case 'p': case '^': push(KeyCode::POW, "POW"); break;
-
-        // ── Equals symbol (for equations, NOT EXE) ──
-        case '=': push(KeyCode::FREE_EQ, "="); break;
-
-        // ── Fraction ──
-        case 'f': push(KeyCode::DIV, "DIV (FRAC)"); break;
-
-        // ── Variables ──
-        case 'x': push(KeyCode::VAR_X, "VAR_X"); break;
-        case 'y': push(KeyCode::VAR_Y, "VAR_Y"); break;
-
-        // ── Functions ──
-        case 'g':  push(KeyCode::GRAPH, "GRAPH"); break;
-        case 't':  push(KeyCode::SIN,   "SIN");   break;
-
-        // ── Roots ──
-        case 'r':  push(KeyCode::SQRT,  "SQRT");  break;
-        case 'R':  // nth root: SHIFT+SQRT
-            push(KeyCode::SHIFT, "SHIFT");
-            push(KeyCode::SQRT,  "SQRT (=nthROOT)");
-            break;
-
-        // ── Steps ──
-        case 'n':  push(KeyCode::SHOW_STEPS, "STEPS"); break;
-
-        // ── Equals (for equations, NOT EXE) ──
-        case 'u':  push(KeyCode::FREE_EQ, "= (FREE_EQ)"); break;
-
-        // ── Misc (uppercase C = AC too) ──
-        case 'C':  push(KeyCode::AC, "AC"); break;
-
-        // ── EXE (physical '<' key → Execute/Solve) ──
-        case '<':  push(KeyCode::EXE, "EXE"); break;
-
-        // ── Function keys (serial shortcuts) ──
-        case 'F':  push(KeyCode::F1, "F1"); break;
-        case 'G':  push(KeyCode::F2, "F2"); break;
-        // F3-F5 available via extended serial protocol if needed
-
-        // Ignore everything else silently
-        default: break;
     }
 }

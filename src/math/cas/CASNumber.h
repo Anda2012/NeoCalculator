@@ -1,5 +1,5 @@
 /**
- * CASNumber.h — Unified numeric type for CAS-S3-ULTRA engine.
+ * CASNumber.h — Unified numeric type for CAS-S3 engine.
  *
  * Manages three precision states automatically:
  *
@@ -28,7 +28,7 @@
  *   double + Form tag + string).  Passed by value in hot loops but
  *   by const-ref in solver APIs.
  *
- * Part of: NumOS CAS-S3-ULTRA — Pilar 1 (Infinite Precision)
+ * Part of: NumOS CAS-S3 — Pilar 1 (Infinite Precision)
  */
 
 #pragma once

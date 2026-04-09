@@ -12,7 +12,7 @@
  * StepLogger / Smart Highlighter to render the changed region in an accent
  * colour (LV_PALETTE_BLUE / LV_PALETTE_ORANGE) in the UI.
  *
- * Part of: NumOS CAS-S3-ULTRA — Phase 13B (Algebraic Brain & Smart Diffing)
+ * Part of: NumOS CAS-S3 — Phase 13B (Algebraic Brain & Smart Diffing)
  */
 
 #pragma once

@@ -24,7 +24,7 @@
  * vpam::MathNode* in `*outHighlight`.  Pass that pointer to
  * `MathCanvas::setHighlightNode()`.
  *
- * Part of: NumOS CAS-S3-ULTRA — Phase 13C (TRS→Display Bridge)
+ * Part of: NumOS CAS-S3 — Phase 13C (TRS→Display Bridge)
  */
 
 #pragma once

@@ -12,7 +12,7 @@
  *   pattern wildcard (e.g. "_a", "_base", "_exp").  All other names are
  *   literal variable references (e.g. "x", "y").
  *
- * Part of: NumOS CAS-S3-ULTRA — Phase 13A (TRS Infrastructure)
+ * Part of: NumOS CAS-S3 — Phase 13A (TRS Infrastructure)
  */
 
 #include "RuleEngine.h"

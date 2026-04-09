@@ -1,7 +1,7 @@
 /**
  * TutorApp.cpp — Step-by-step algebraic equation tutor (Phase 13C).
  *
- * Part of: NumOS CAS-S3-ULTRA — Phase 13C (TRS→Display Bridge)
+ * Part of: NumOS CAS-S3 — Phase 13C (TRS→Display Bridge)
  */
 
 #include "TutorApp.h"

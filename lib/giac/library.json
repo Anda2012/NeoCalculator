@@ -10,18 +10,20 @@
       "-DEMBEDDED",
       "-DUMAP",
       "-fexceptions",
-      "-frtti",
       "-Isrc"
     ],
     "srcFilter": [
-      "+<src/>",
-      "+<src/**/*.cpp>",
-      "+<src/**/*.c>",
-      "+<**/*.cpp>",
-      "+<**/*.c>",
-      "-<src/test.cpp>",
+      "+<src/*.cpp>",
+      "+<src/*.c>",
+      "-<src/kdisplay*>",
+      "-<src/k_*.cpp>",
+      "-<src/fx*.cpp>",
+      "-<src/ti*.cpp>",
       "-<src/Xcas*>",
-      "-<src/Fl_*>"
+      "-<src/Fl_*>",
+      "-<src/Graph*>",
+      "-<src/hist*>",
+      "-<src/test.cpp>"
     ]
   },
   "dependencies": {

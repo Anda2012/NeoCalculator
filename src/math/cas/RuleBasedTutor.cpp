@@ -9,7 +9,7 @@
  *   Rule 5 — Divide both sides by the variable's coefficient.
  *   Fallback — If degree 2, invoke solveQuadraticTutor().
  *
- * Part of: NumOS CAS-S3-ULTRA — Phase 12 (True Rule-Based CAS Engine)
+ * Part of: NumOS CAS-S3 — Phase 12 (True Rule-Based CAS Engine)
  */
 
 #include "RuleBasedTutor.h"

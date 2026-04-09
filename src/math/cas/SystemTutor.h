@@ -10,7 +10,7 @@
  *   · ELIMINATION  — add both equations to cancel one variable, then back-sub
  *   · EQUATING     — equate the isolated expressions and solve
  *
- * Part of: NumOS CAS-S3-ULTRA — Phase 15 (System Solver)
+ * Part of: NumOS CAS-S3 — Phase 15 (System Solver)
  */
 
 #pragma once

@@ -69,7 +69,7 @@
  *     passed to the StepLogger / Smart Highlighter for UI accent-colour rendering.
  *   • StepLog::affectedNode — same field in the per-step history record.
  *
- * Part of: NumOS CAS-S3-ULTRA — Phase 13A/B (TRS Infrastructure + Algebraic Brain)
+ * Part of: NumOS CAS-S3 — Phase 13A/B (TRS Infrastructure + Algebraic Brain)
  */
 
 #pragma once

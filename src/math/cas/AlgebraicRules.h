@@ -37,7 +37,7 @@
  *   for (auto& r : makeAlgebraicRules(pool, 'x'))
  *       engine.addRule(std::move(r));
  *
- * Part of: NumOS CAS-S3-ULTRA — Phase 13B (Algebraic Brain & Smart Diffing)
+ * Part of: NumOS CAS-S3 — Phase 13B (Algebraic Brain & Smart Diffing)
  */
 
 #pragma once

@@ -1,7 +1,7 @@
 /**
  * SingleSolver.cpp — Implementation of the single-variable equation solver.
  *
- * CAS-S3-ULTRA engine integration:
+ * CAS-S3 engine integration:
  *
  *   Pilar 1 (CASNumber):
  *     All intermediate arithmetic uses CASNumber — exact fractions via
@@ -19,7 +19,7 @@
  *     The arena + ConsTable deduplication is active for any SymExpr
  *     operations in the OmniSolver layer above.
  *
- * Part of: NumOS CAS-S3-ULTRA — Phase C (SingleSolver + Dynamic Reasoning)
+ * Part of: NumOS CAS-S3 — Phase C (SingleSolver + Dynamic Reasoning)
  */
 
 #include "SingleSolver.h"
@@ -239,7 +239,7 @@ bool SingleSolver::solveLinear(const SymEquation& eq, char var, SolveResult& res
 // ════════════════════════════════════════════════════════════════════
 // solveQuadratic — ax² + bx + c = 0
 //
-// ★ SHOWCASE for all three CAS-S3-ULTRA pillars:
+// ★ SHOWCASE for all three CAS-S3 pillars:
 //
 //   Pilar 1 (CASNumber): All arithmetic uses CASNumber.  Discriminant
 //     computation is exact even for large coefficients.  sqrt(D) returns

@@ -6,7 +6,7 @@
  * If current_hash == previous_hash the step is silently discarded,
  * eliminating the redundant-step bug in solver output.
  *
- * Part of: NumOS CAS-S3-ULTRA — Phase C+
+ * Part of: NumOS CAS-S3 — Phase C+
  */
 
 #include "CASStepLogger.h"

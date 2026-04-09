@@ -7,7 +7,7 @@
  * SymExpr factories to show standard formulas, substitutions, and
  * gradual simplifications.
  *
- * Part of: NumOS CAS-S3-ULTRA — Pilar 2 (Super Detail Steps)
+ * Part of: NumOS CAS-S3 — Pilar 2 (Super Detail Steps)
  */
 
 #pragma once

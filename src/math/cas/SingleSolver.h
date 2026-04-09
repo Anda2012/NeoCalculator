@@ -1,5 +1,5 @@
 /**
- * SingleSolver.h — Single-variable equation solver for CAS-S3-ULTRA.
+ * SingleSolver.h — Single-variable equation solver for CAS-S3.
  *
  * Solves equations of the form  f(x) = 0  after normalization.
  * Supports:
@@ -16,7 +16,7 @@
  *   Algebraic steps are logged via SolveAction + ActionContext, producing
  *   rich contextual phrases instead of static strings.
  *
- * Part of: NumOS CAS-S3-ULTRA — Phase C (SingleSolver + Dynamic Reasoning)
+ * Part of: NumOS CAS-S3 — Phase C (SingleSolver + Dynamic Reasoning)
  */
 
 #pragma once

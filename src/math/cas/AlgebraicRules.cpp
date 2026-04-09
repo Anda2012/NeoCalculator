@@ -17,7 +17,7 @@
  * CasMemoryPool supplied at construction time, satisfying the Phase 13A
  * requirement that all CAS allocations use the PSRAM pmr pool.
  *
- * Part of: NumOS CAS-S3-ULTRA — Phase 13B (Algebraic Brain & Smart Diffing)
+ * Part of: NumOS CAS-S3 — Phase 13B (Algebraic Brain & Smart Diffing)
  */
 
 #include "AlgebraicRules.h"

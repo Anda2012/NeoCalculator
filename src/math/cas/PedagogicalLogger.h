@@ -23,7 +23,7 @@
  * The ActionContext uses CASNumber (Pilar 1) for all numeric values,
  * ensuring BigInt values display correctly.
  *
- * Part of: NumOS CAS-S3-ULTRA — Pilar 2 (Super Detail Steps)
+ * Part of: NumOS CAS-S3 — Pilar 2 (Super Detail Steps)
  */
 
 #pragma once

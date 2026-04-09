@@ -27,7 +27,7 @@
  *   MODE         = Return to menu (handled by SystemApp)
  *   Arrow keys   = Scroll step list when visible
  *
- * Part of: NumOS CAS-S3-ULTRA — Phase 13C (TRS→Display Bridge)
+ * Part of: NumOS CAS-S3 — Phase 13C (TRS→Display Bridge)
  */
 
 #pragma once

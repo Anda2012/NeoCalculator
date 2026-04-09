@@ -1,7 +1,7 @@
 /**
  * CasToVpam.cpp — PersistentAST → VPAM MathAST converter.
  *
- * Part of: NumOS CAS-S3-ULTRA — Phase 13C (TRS→Display Bridge)
+ * Part of: NumOS CAS-S3 — Phase 13C (TRS→Display Bridge)
  */
 
 #include "CasToVpam.h"

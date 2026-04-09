@@ -1,7 +1,7 @@
 /**
  * SystemHeuristics.cpp — Implementation of the 2×2 system method chooser.
  *
- * Part of: NumOS CAS-S3-ULTRA — Phase 15 (System Solver)
+ * Part of: NumOS CAS-S3 — Phase 15 (System Solver)
  */
 
 #include "SystemHeuristics.h"
