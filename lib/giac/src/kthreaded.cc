@@ -25,8 +25,10 @@ using namespace std;
 #include "giacintl.h"
 #include "input_parser.h"
 extern "C" void Sleep(int millisecond);
-#ifdef TICE
+#if defined(TICE) || !defined(FXCG)
 #include "k_csdk.h"
+#endif
+#ifdef TICE
 inline void Sleep(int millis){ return os_wait_1ms(millis); }
 #endif
 

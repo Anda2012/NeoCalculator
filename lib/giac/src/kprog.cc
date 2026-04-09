@@ -7724,7 +7724,7 @@ namespace giac {
     unsigned int i=0;
     if ( g.type==_STRNG &&  g.subtype==-1) return  g;
     //return clock();
-    return ++i;//RTC_GetTicks();
+    return gen(int(++i)); // RTC_GetTicks();
   }
   static const char _monotonic_s []="monotonic";
   static define_unary_function_eval (__monotonic,&_monotonic,_monotonic_s);

@@ -238,7 +238,7 @@ namespace giac {
 #ifdef FXCG
       return RTC_GetTicks();
 #else
-      return millis();
+  return gen(double(millis()));
 #endif
     }
     double delta;
@@ -710,7 +710,7 @@ namespace giac {
   gen _close(const gen & g0,GIAC_CONTEXT){
     gen g=eval(g0,1,contextptr);
     if ( g.type==_STRNG && g.subtype==-1) return  g;
-#if !defined(VISUALC) && !defined(BESTA_OS) && !defined(__MINGW_H) && !defined(NSPIRE) && !defined(FXCG) && !defined TICE
+#if !defined(VISUALC) && !defined(BESTA_OS) && !defined(__MINGW_H) && !defined(_WIN32) && !defined(NSPIRE) && !defined(FXCG) && !defined TICE
     if (g.type==_INT_ && g.subtype==_INT_FD){
       purgenoassume(g0,contextptr);
       close(g.val);

@@ -557,7 +557,7 @@ inline float finv(float f1){ return 1/f1; }
 #if defined __APPLE__ || defined EMCC || defined NO_BSD 
 inline float fgamma(float f1){ return tgammaf(f1); }
 #else
-#if defined(__MINGW_H) || defined(VISUALC) || defined(FXCG) || defined TICE// FIXME gamma, not used
+#if defined(__MINGW_H) || defined(_WIN32) || defined(VISUALC) || defined(FXCG) || defined TICE// FIXME gamma, not used
 inline float fgamma(float f1){ return f1; }
 #else
 inline float fgamma(float f1){ return gammaf(f1); } // or tgammaf(f1) on some versions of emscripten

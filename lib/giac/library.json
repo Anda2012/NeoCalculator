@@ -8,6 +8,7 @@
       "-DNO_GUI",
       "-DGIAC_GENERIC",
       "-DEMBEDDED",
+      "-DUSE_GMP_REPLACEMENTS",
       "-DUMAP",
       "-fexceptions",
       "-Isrc"
@@ -17,8 +18,6 @@
       "+<*.cpp>",
       "+<*.c>",
       "-<kdisplay*>",
-      "-<kmaple.cc>",
-      "-<kthreaded.cc>",
       "-<k_*.cc>",
       "-<k_*.cpp>",
       "-<fx*.cc>",

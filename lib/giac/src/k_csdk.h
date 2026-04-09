@@ -35,6 +35,7 @@ static int rtc_Minutes = 0;
 static int rtc_Seconds = 0;
 static inline void set_time(int, int) {}
 static inline unsigned long millis() { return 0; }
+static inline void os_wait_1ms(int) {}
 
 #ifndef KEY_CTRL_EXIT
 #define KEY_CTRL_EXIT 5

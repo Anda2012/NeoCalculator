@@ -62,7 +62,7 @@ using namespace std;
 #include "solve.h"
 #include "csturm.h"
 #include "sparse.h"
-#if defined GIAC_HAS_STO_38 || defined NSPIRE_NEWLIB || defined FXCG || defined GIAC_GGB || defined TICE
+#if defined GIAC_HAS_STO_38 || defined NSPIRE_NEWLIB || defined FXCG || defined GIAC_GGB || defined TICE || defined USE_GMP_REPLACEMENTS
 inline bool is_graphe(const giac::gen &g,std::string &disp_out,const giac::context *){ return false; }
 #else
 #include "graphtheory.h"
@@ -11054,7 +11054,7 @@ namespace giac {
       }
       if (l>digits+delta)
 	digits=l-delta;
-#if !defined GIAC_HAS_STO_38 && !defined FXCG && !defined TICE
+#if !defined GIAC_HAS_STO_38 && !defined FXCG && !defined TICE && !defined USE_GMP_REPLACEMENTS
       if (digits>14){
 #ifdef HAVE_LIBMPFR
 	int nbits=digits2bits(digits);

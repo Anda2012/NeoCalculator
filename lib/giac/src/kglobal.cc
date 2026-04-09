@@ -1708,7 +1708,7 @@ extern "C" void Sleep(unsigned int miliSecond);
 
   void ctrl_c_signal_handler(int signum){
     ctrl_c=true;
-#if !defined NSPIRE_NEWLIB && !defined WIN32 && !defined BESTA_OS && !defined NSPIRE && !defined FXCG && !defined TICE
+#if !defined NSPIRE_NEWLIB && !defined WIN32 && !defined(_WIN32) && !defined BESTA_OS && !defined NSPIRE && !defined FXCG && !defined TICE
     if (child_id)
       kill(child_id,SIGINT);
 #endif

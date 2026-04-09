@@ -3351,7 +3351,7 @@ namespace giac {
     return apply(args,Heavisidetopiecewise,contextptr);
   }
 
-#if defined FXCG || !defined USE_GMP_REPLACEMENTS || defined TICE || defined NSPIRE_NEWLIB
+#if defined FXCG || !defined USE_GMP_REPLACEMENTS || defined TICE || defined NSPIRE_NEWLIB || defined GIAC_GENERIC
   // find simplest between some trig simplifications, by Luka Marohnić
   gen _trigsimplify(const gen & g,GIAC_CONTEXT) {
     if (g.type==_STRNG && g.subtype==-1) return g;

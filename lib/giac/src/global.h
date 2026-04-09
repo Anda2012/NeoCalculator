@@ -25,7 +25,7 @@
 #define GIAC_CONTEXT const context * contextptr
 #define GIAC_CONTEXT0 const context * contextptr=0
 
-#if !defined(HAVE_NO_SYS_TIMES_H) && !defined(BESTA_OS) && !defined(__MINGW_H) && !defined(NSPIRE) && !defined(FXCG) && !defined TICE
+#if !defined(HAVE_NO_SYS_TIMES_H) && !defined(BESTA_OS) && !defined(__MINGW_H) && !defined(_WIN32) && !defined(NSPIRE) && !defined(FXCG) && !defined TICE
 #include <sys/times.h>
 #else
 #if defined VISUALC || defined BESTA_OS || defined FREERTOS
