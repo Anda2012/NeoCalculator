@@ -1,6 +1,5 @@
 #include <sstream>
 #include <exception>
-#include <new>
 
 #include "config.h"
 #include "gen.h"
@@ -13,6 +12,11 @@
 
 using namespace giac;
 
+namespace giac {
+  void check_browser_functions();
+  void lexer_localization(int lang, const context * contextptr);
+}
+
 static giac::context global_context;
 
 static std::string trimCopy(const std::string& s) {
@@ -23,17 +27,6 @@ static std::string trimCopy(const std::string& s) {
   }
   const size_t end = s.find_last_not_of(ws);
   return s.substr(begin, end - begin + 1);
-}
-
-static std::string compactCopy(const std::string& s) {
-  std::string out;
-  out.reserve(s.size());
-  for (char c : s) {
-    if (c != ' ' && c != '\t' && c != '\r' && c != '\n') {
-      out.push_back(c);
-    }
-  }
-  return out;
 }
 
 static giac::gen factorBestEffort(const giac::gen& expr) {
@@ -52,8 +45,10 @@ static giac::gen factorBestEffort(const giac::gen& expr) {
 static void initGiac() {
   static bool initialized = false;
   if (!initialized) {
-    giac::xcas_mode(1, &global_context);
+    giac::xcas_mode(0, &global_context);
     giac::language(0, &global_context);
+    giac::check_browser_functions();
+    giac::lexer_localization(0, &global_context);
     giac::cas_setup(giac::makevecteur(0, 0, 0, 1, 0), &global_context);
     initialized = true;
   }
@@ -68,18 +63,9 @@ String solveWithGiac(String expr) {
     // Work around parser keyword-token issues by dispatching factor() directly.
     if (std_expr.size() > 8 && std_expr.rfind("factor(", 0) == 0 && std_expr.back() == ')') {
       const std::string inner = trimCopy(std_expr.substr(7, std_expr.size() - 8));
-      const std::string compact_inner = compactCopy(inner);
       giac::gen g_inner(inner, &global_context);
       g_inner = giac::eval(g_inner, 1, &global_context);
-      giac::gen g_fact;
-      try {
-        g_fact = factorBestEffort(g_inner);
-      } catch (const std::bad_alloc&) {
-        if (compact_inner == "x^2-1") {
-          return String("(x-1)*(x+1)");
-        }
-        throw;
-      }
+      giac::gen g_fact = factorBestEffort(g_inner);
       g_fact = giac::simplify(g_fact, &global_context);
       return String(g_fact.print(&global_context).c_str());
     }

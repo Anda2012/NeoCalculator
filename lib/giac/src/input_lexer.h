@@ -58,9 +58,6 @@ namespace giac {
   struct charptr_gen_unary {
     const char * s;
     size_t _FUNC_; // unary_function_ptr *
-#ifndef TICE
-    unsigned short reserved;
-#endif
     signed char subtype;
     unsigned char type;  // see dispatch.h
   };

@@ -5339,9 +5339,31 @@ namespace giac {
     if (j==l-1)
     */      
     cs=a.print(contextptr)+"::"+cs;
-    std::pair<charptr_gen *,charptr_gen *> p= equal_range(builtin_lexer_functions_begin(),builtin_lexer_functions_end(),charptr_gen(cs.c_str(),0),tri);
-    if (p.first!=p.second && p.first!=builtin_lexer_functions_end()){
-      c=p.first->second;
+    int lo=0,hi=int(builtin_lexer_functions_number)-1,pos=-1;
+    while (lo<=hi){
+      int mid=(lo+hi)>>1;
+      int cmp=strcmp(cs.c_str(),builtin_lexer_functions[mid].s);
+      if (!cmp){
+        pos=mid;
+        break;
+      }
+      if (cmp<0)
+        hi=mid-1;
+      else
+        lo=mid+1;
+    }
+    if (pos>=0){
+      const unary_function_ptr * tab[]={
+#include "static_lexer_.h"
+      };
+      c=gen(tab[pos]);
+      if (builtin_lexer_functions[pos]._FUNC_%2){
+#ifdef TICE
+        c._FUNC_ |= 0x800000;
+#else
+        c._FUNC_ +=1;
+#endif
+      }
       if (b.is_symb_of_sommet(at_of))
 	return c(b._SYMBptr->feuille[1],contextptr);
       else

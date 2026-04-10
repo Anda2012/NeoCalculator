@@ -2519,51 +2519,40 @@ extern "C" void Sleep(unsigned int miliSecond);
       }
 #endif
       string ts(s);
-      std::pair<charptr_gen *,charptr_gen *> p=std::equal_range(builtin_lexer_functions_begin(),builtin_lexer_functions_end(),std::pair<const char *,gen>(ts.c_str(),0),tri);
-      // dbg_printf("make symbol %s %x %x %x %x\n",s.c_str(),(unsigned) builtin_lexer_functions_begin(),(unsigned) builtin_lexer_functions_end(),(unsigned) p.first,(unsigned) p.second);
-      if (p.first!=p.second && p.first!=builtin_lexer_functions_end()){
-	if (p.first->second.subtype==T_TO-256)
-	  res=plus_one;
-	else
-	  res = p.first->second;
-	res.subtype=1;
-	if (1){
-#if 0 // ndef NSPIRE_NEWLIB
-	  res=0;
-	  int pos=int(p.first-builtin_lexer_functions_begin());
-	  size_t val=builtin_lexer_functions_[pos];
-	  unary_function_ptr * at_val=(unary_function_ptr *)val;
-	  res=at_val;
-	  if (builtin_lexer_functions[pos]._FUNC_%2){
-	    res._FUNC_ +=1;
-	  }
-#else // keep this code, required for the nspire otherwise evalf(pi)=reboot
-	  int pos=p.first-builtin_lexer_functions_begin();
-	  const unary_function_ptr * tab[]={
+      int lo=0,hi=int(builtin_lexer_functions_number)-1,pos=-1;
+      while (lo<=hi){
+  int mid=(lo+hi)>>1;
+  int cmp=strcmp(ts.c_str(),builtin_lexer_functions[mid].s);
+  if (!cmp){
+    pos=mid;
+    break;
+  }
+  if (cmp<0)
+    hi=mid-1;
+  else
+    lo=mid+1;
+      }
+      if (pos>=0){
+  int subtype=builtin_lexer_functions[pos].subtype;
+  if (subtype==T_TO-256)
+    res=plus_one;
+  else {
+    const unary_function_ptr * tab[]={
 #include "static_lexer_.h"
-	  };
-	  res=gen(tab[pos]);
-	  if (builtin_lexer_functions[pos]._FUNC_%2){
+    };
+    res=gen(tab[pos]);
+    if (builtin_lexer_functions[pos]._FUNC_%2){
 #ifdef TICE
-	    res._FUNC_ |= 0x800000;
+      res._FUNC_ |= 0x800000;
 #else
-	    res._FUNC_ +=1;
+      res._FUNC_ +=1;
 #endif
-	  }
-	  //size_t val=(*builtin_lexer_functions_())[pos];
-	  //res=gen(int(builtin_lexer_functions_[p.first-builtin_lexer_functions_begin()]+p.first->second.val));
-	  //res=gen(*res._FUNCptr);
-	  //res=gen(int(val+p.first->second.val));
-	  //res=gen(*res._FUNCptr);
-#endif
-	  //printf("func %d %d %d\n",res.val,res.type,pos);
-	  //const unary_function_eval * ptr=(const unary_function_eval *)at_factor->_ptr;
-	  //printf("factor %u %u %s %u\n",(size_t) at_factor,at_factor->_ptr,ptr->s,(size_t) ptr->op);
-	}
-	index_status(contextptr)=(p.first->second.subtype==T_UNARY_OP-256);
-	int token=p.first->second.subtype;
-	token += (token<0)?512:256 ;	
-	return token;
+    }
+  }
+  index_status(contextptr)=(subtype==T_UNARY_OP-256);
+  int token=subtype;
+  token += (token<0)?512:256 ;	
+  return token;
       }
       lexer_tab_int_type tst={ts.c_str(),0,0,0,0};
 #ifdef USTL

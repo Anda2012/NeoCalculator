@@ -6,6 +6,8 @@
 #include "gen.h"
 #include "global.h"
 #include "graphtheory.h"
+#include "identificateur.h"
+#include "input_lexer.h"
 #include "prog.h"
 #include "tinymt32.h"
 
@@ -44,7 +46,34 @@ struct order_t;
 bool freeze = false;
 std::map<std::string, context *> *context_names = nullptr;
 
-vecteur *keywords_vecteur_ptr() { return nullptr; }
+vecteur *keywords_vecteur_ptr() {
+	static vecteur keywords;
+	static bool initialized = false;
+	if (!initialized) {
+		keywords.push_back(identificateur("sin"));
+		keywords.push_back(identificateur("diff"));
+		keywords.push_back(identificateur("det"));
+		keywords.push_back(identificateur("solve"));
+		keywords.push_back(identificateur("factor"));
+		keywords.push_back(identificateur("integrate"));
+		initialized = true;
+	}
+	return &keywords;
+}
+
+void check_browser_functions() {
+	for (unsigned i = 0; i < builtin_lexer_functions_number; ++i) {
+		(void)builtin_lexer_functions[i].s;
+	}
+}
+
+void lexer_localization(int lang, const context *contextptr) {
+	language(lang, contextptr);
+	vecteur *keywords = keywords_vecteur_ptr();
+	if (keywords) {
+		set_lexer_symbols(*keywords, contextptr);
+	}
+}
 
 #ifndef TICE
 void set_abort() {}
