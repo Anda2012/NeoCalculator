@@ -2302,7 +2302,8 @@ namespace giac {
       if (v[i].type==_SYMB){
 	if (v[i].is_symb_of_sommet(at_ln)){
  	  gen g=limit(v[i]._SYMBptr->feuille,x,lim_point,direction,contextptr);
-	  if (is_inf(g) && g!=plus_inf)
+    // Treat unsigned infinity as +infinity for +infinity-oriented limits.
+    if (is_inf(g) && g!=plus_inf && !(g==unsigned_inf && (lim_point==plus_inf || lim_point==unsigned_inf || direction>=0)))
 	    return gensizeerr(gettext("ln of unsigned or minus infinity"));
 	}
 	if (v[i].is_symb_of_sommet(at_sinh) || v[i].is_symb_of_sommet(at_cosh) || v[i].is_symb_of_sommet(at_tanh)){
@@ -2496,6 +2497,24 @@ namespace giac {
       direction=1;
     if (lim_point==minus_inf)
       direction=-1;    
+
+    // Handle indeterminate 1^infinity forms with the standard exp-transform.
+    if (e.type==_SYMB && e._SYMBptr->sommet==at_pow && e._SYMBptr->feuille.type==_VECT && e._SYMBptr->feuille._VECTptr->size()==2){
+      const gen &base = e._SYMBptr->feuille._VECTptr->front();
+      const gen &expo = e._SYMBptr->feuille._VECTptr->back();
+      gen lbase = in_limit(base,x,lim_point,direction,contextptr);
+      gen lexpo = in_limit(expo,x,lim_point,direction,contextptr);
+      if (lbase==plus_one && is_inf(lexpo)){
+        // Prefer expo*(base-1): more stable than expo*ln(base) near base->1.
+        gen t = in_limit(expo*(base-plus_one),x,lim_point,direction,contextptr);
+        if (!is_undef(t))
+          return exp(t,contextptr);
+        t = in_limit(expo*ln(base,contextptr),x,lim_point,direction,contextptr);
+        if (!is_undef(t))
+          return exp(t,contextptr);
+      }
+    }
+
     // First try substitution
     if (has_i(lop(e,at_ln)))
       e=recursive_normal(expln2trig(e,contextptr),contextptr);

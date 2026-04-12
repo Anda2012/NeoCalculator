@@ -2141,7 +2141,9 @@ namespace giac {
   // point + rayon or line
   gen _cercle(const gen & args,GIAC_CONTEXT){
 #ifndef WITH_PLOT
-    return undef;
+    if (args.type==_STRNG && args.subtype==-1) return args;
+    // Keep symbolic geometry payloads available even when plotting backend is disabled.
+    return symbolic(at_cercle,args);
 #endif
     if (is_undef(args)) return args;
     // inert form (since cercle return itself with a pnt__vect arg)
