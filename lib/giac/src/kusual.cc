@@ -9444,11 +9444,14 @@ double my_tan(double arg){
 
 #else 
   const define_alias_gen(alias_plus_four,_INT_,0,4);
-  const gen & gen_plus_four = *(const gen *)&alias_plus_four;
+  static const gen gen_plus_four_storage(4);
+  const gen & gen_plus_four = gen_plus_four_storage;
   const define_alias_gen(alias_plus_six,_INT_,0,6);
-  const gen & gen_plus_six = *(const gen *)&alias_plus_six;
+  static const gen gen_plus_six_storage(6);
+  const gen & gen_plus_six = gen_plus_six_storage;
   const define_alias_gen(alias_180,_INT_,0,180);
-  const gen & gen_180 = *(const gen *)&alias_180;
+  static const gen gen_180_storage(180);
+  const gen & gen_180 = gen_180_storage;
 
   const define_tab2_alias_gen(alias_cst_two_pi_tab,_INT_,0,2,_IDNT,0,&ref_pi);
   const define_alias_ref_vecteur2(cst_two_pi_refv,alias_cst_two_pi_tab);
@@ -9456,107 +9459,128 @@ double my_tan(double arg){
   // static const define_alias_gen(cst_two_pi_V,_VECT,_SEQ__VECT,&cst_two_pi_refv);
   const define_alias_ref_symbolic( cst_two_pi_symb ,alias_at_prod,_VECT,_SEQ__VECT,&cst_two_pi_refv);
   const define_alias_gen(alias_cst_two_pi,_SYMB,0,&cst_two_pi_symb);
-  const gen & cst_two_pi = *(const gen *)&alias_cst_two_pi;
+  static const gen cst_two_pi_storage(2*cst_pi);
+  const gen & cst_two_pi = cst_two_pi_storage;
 
   const define_alias_ref_symbolic( inv_2_symb,alias_at_inv,_INT_,0,2);
   const define_alias_gen(alias_inv_2,_SYMB,0,&inv_2_symb);
-  const gen & gen_inv_2 = *(const gen *)&alias_inv_2;
+  static const gen gen_inv_2_storage(symb_inv(2));
+  const gen & gen_inv_2 = gen_inv_2_storage;
 
   const define_alias_ref_symbolic( inv_3_symb,alias_at_inv,_INT_,0,3)
   const define_alias_gen(alias_inv_3,_SYMB,0,&inv_3_symb);
-  const gen & gen_inv_3 = *(const gen *)&alias_inv_3;
+  static const gen gen_inv_3_storage(symb_inv(3));
+  const gen & gen_inv_3 = gen_inv_3_storage;
 
   const define_alias_ref_symbolic( inv_4_symb,alias_at_inv,_INT_,0,4)
   const define_alias_gen(alias_inv_4,_SYMB,0,&inv_4_symb);
-  const gen & gen_inv_4 = *(const gen *)&alias_inv_4;
+  static const gen gen_inv_4_storage(symb_inv(4));
+  const gen & gen_inv_4 = gen_inv_4_storage;
 
   const define_tab2_alias_gen(alias_cst_pi_over_2_tab,_IDNT,0,&ref_pi,_SYMB,0,&inv_2_symb);
   const define_alias_ref_vecteur2(cst_pi_over_2_refv,alias_cst_pi_over_2_tab);
 
   const define_alias_ref_symbolic( cst_pi_over_2_symb ,alias_at_prod,_VECT,_SEQ__VECT,&cst_pi_over_2_refv);
   const define_alias_gen(alias_cst_pi_over_2,_SYMB,0,&cst_pi_over_2_symb);
-  const gen & cst_pi_over_2 = *(const gen *)&alias_cst_pi_over_2;
+  static const gen cst_pi_over_2_storage(cst_pi*gen_inv_2);
+  const gen & cst_pi_over_2 = cst_pi_over_2_storage;
 
   const define_alias_ref_symbolic( plus_inf_symb ,alias_at_plus,_IDNT,0,&ref_infinity);
   const define_alias_gen(alias_plus_inf,_SYMB,0,&plus_inf_symb);
-  const gen & plus_inf = *(const gen *)&alias_plus_inf;
+  static const gen plus_inf_storage(symbolic(at_plus,unsigned_inf));
+  const gen & plus_inf = plus_inf_storage;
   const define_alias_ref_symbolic( minus_inf_symb ,alias_at_neg,_IDNT,0,&ref_infinity);
   const define_alias_gen(alias_minus_inf,_SYMB,0,&minus_inf_symb);
-  const gen & minus_inf = *(const gen *)&alias_minus_inf;
+  static const gen minus_inf_storage(symbolic(at_neg,unsigned_inf));
+  const gen & minus_inf = minus_inf_storage;
 
   const define_alias_ref_fraction(plus_one_half_ref,_INT_,0,1,_INT_,0,2);
   const define_alias_gen(alias_plus_one_half,_FRAC,0,&plus_one_half_ref);
-  const gen & plus_one_half = *(const gen *)&alias_plus_one_half;
+  static const gen plus_one_half_storage(fraction(1,2));
+  const gen & plus_one_half = plus_one_half_storage;
   const define_alias_ref_symbolic( minus_one_half_symb ,alias_at_neg,_SYMB,0,&inv_2_symb);
   const define_alias_gen(alias_minus_one_half,_SYMB,0,&minus_one_half_symb);
-  const gen & minus_one_half = *(const gen *)&alias_minus_one_half;
+  static const gen minus_one_half_storage(symbolic(at_neg,symb_inv(2)));
+  const gen & minus_one_half = minus_one_half_storage;
   
   const define_tab2_alias_gen(alias_plus_sqrt3_tab,_INT_,0,3,_FRAC,0,&plus_one_half_ref);
   const define_alias_ref_vecteur2(plus_sqrt3_refv,alias_plus_sqrt3_tab);
 
   const define_alias_ref_symbolic( plus_sqrt3_symb ,alias_at_pow,_VECT,_SEQ__VECT,&plus_sqrt3_refv);
   const define_alias_gen(alias_plus_sqrt3,_SYMB,0,&plus_sqrt3_symb);
-  const gen & plus_sqrt3 = *(const gen *)&alias_plus_sqrt3;
+  static const gen plus_sqrt3_storage(symbolic(at_pow,gen(makevecteur(3,plus_one_half),_SEQ__VECT)));
+  const gen & plus_sqrt3 = plus_sqrt3_storage;
 
   const define_tab2_alias_gen(alias_plus_sqrt2_tab,_INT_,0,2,_FRAC,0,&plus_one_half_ref);
   const define_alias_ref_vecteur2(plus_sqrt2_refv,alias_plus_sqrt2_tab);
   const define_alias_ref_symbolic( plus_sqrt2_symb ,alias_at_pow,_VECT,_SEQ__VECT,&plus_sqrt2_refv);
   const define_alias_gen(alias_plus_sqrt2,_SYMB,0,&plus_sqrt2_symb);
-  const gen & plus_sqrt2 = *(const gen *)&alias_plus_sqrt2;
+  static const gen plus_sqrt2_storage(symbolic(at_pow,gen(makevecteur(2,plus_one_half),_SEQ__VECT)));
+  const gen & plus_sqrt2 = plus_sqrt2_storage;
 
   const define_tab2_alias_gen(alias_plus_sqrt6_tab,_INT_,0,6,_FRAC,0,&plus_one_half_ref);
   const define_alias_ref_vecteur2(plus_sqrt6_refv,alias_plus_sqrt6_tab);
   const define_alias_ref_symbolic( plus_sqrt6_symb ,alias_at_pow,_VECT,_SEQ__VECT,&plus_sqrt6_refv);
   const define_alias_gen(alias_plus_sqrt6,_SYMB,0,&plus_sqrt6_symb);
-  const gen & plus_sqrt6 = *(const gen *)&alias_plus_sqrt6;
+  static const gen plus_sqrt6_storage(symbolic(at_pow,gen(makevecteur(6,plus_one_half),_SEQ__VECT)));
+  const gen & plus_sqrt6 = plus_sqrt6_storage;
 
   const define_alias_ref_symbolic( minus_sqrt2_symb ,alias_at_neg,_SYMB,0,&plus_sqrt2_symb);
   const define_alias_gen(alias_minus_sqrt2,_SYMB,0,&minus_sqrt2_symb);
-  const gen & minus_sqrt2 = *(const gen *)&alias_minus_sqrt2;
+  static const gen minus_sqrt2_storage(symbolic(at_neg,plus_sqrt2));
+  const gen & minus_sqrt2 = minus_sqrt2_storage;
 
   const define_alias_ref_symbolic( minus_sqrt3_symb ,alias_at_neg,_SYMB,0,&plus_sqrt3_symb);
   const define_alias_gen(alias_minus_sqrt3,_SYMB,0,&minus_sqrt3_symb);
-  const gen & minus_sqrt3 = *(const gen *)&alias_minus_sqrt3;
+  static const gen minus_sqrt3_storage(symbolic(at_neg,plus_sqrt3));
+  const gen & minus_sqrt3 = minus_sqrt3_storage;
 
   const define_alias_ref_symbolic( minus_sqrt6_symb ,alias_at_neg,_SYMB,0,&plus_sqrt6_symb);
   const define_alias_gen(alias_minus_sqrt6,_SYMB,0,&minus_sqrt6_symb);
-  const gen & minus_sqrt6 = *(const gen *)&alias_minus_sqrt6;
+  static const gen minus_sqrt6_storage(symbolic(at_neg,plus_sqrt6));
+  const gen & minus_sqrt6 = minus_sqrt6_storage;
 
   const define_tab2_alias_gen(alias_minus_sqrt3_2_tab,_SYMB,0,&minus_sqrt3_symb,_SYMB,0,&inv_2_symb);
   const define_alias_ref_vecteur2(minus_sqrt3_2_refv,alias_minus_sqrt3_2_tab);
   const define_alias_ref_symbolic( minus_sqrt3_2_symb ,alias_at_prod,_VECT,_SEQ__VECT,&minus_sqrt3_2_refv);
   const define_alias_gen(alias_minus_sqrt3_2,_SYMB,0,&minus_sqrt3_2_symb);
-  const gen & minus_sqrt3_2 = *(const gen *)&alias_minus_sqrt3_2;
+  static const gen minus_sqrt3_2_storage(minus_sqrt3*gen_inv_2);
+  const gen & minus_sqrt3_2 = minus_sqrt3_2_storage;
 
   const define_tab2_alias_gen(alias_minus_sqrt2_2_tab,_SYMB,0,&minus_sqrt2_symb,_SYMB,0,&inv_2_symb);
   const define_alias_ref_vecteur2(minus_sqrt2_2_refv,alias_minus_sqrt2_2_tab);
   const define_alias_ref_symbolic( minus_sqrt2_2_symb ,alias_at_prod,_VECT,_SEQ__VECT,&minus_sqrt2_2_refv);
   const define_alias_gen(alias_minus_sqrt2_2,_SYMB,0,&minus_sqrt2_2_symb);
-  const gen & minus_sqrt2_2 = *(const gen *)&alias_minus_sqrt2_2;
+  static const gen minus_sqrt2_2_storage(minus_sqrt2*gen_inv_2);
+  const gen & minus_sqrt2_2 = minus_sqrt2_2_storage;
 
   const define_tab2_alias_gen(alias_minus_sqrt3_3_tab,_SYMB,0,&minus_sqrt3_symb,_SYMB,0,&inv_3_symb);
   const define_alias_ref_vecteur2(minus_sqrt3_3_refv,alias_minus_sqrt3_3_tab);
   const define_alias_ref_symbolic( minus_sqrt3_3_symb ,alias_at_prod,_VECT,_SEQ__VECT,&minus_sqrt3_3_refv);
   const define_alias_gen(alias_minus_sqrt3_3,_SYMB,0,&minus_sqrt3_3_symb);
-  const gen & minus_sqrt3_3 = *(const gen *)&alias_minus_sqrt3_3;
+  static const gen minus_sqrt3_3_storage(minus_sqrt3*gen_inv_3);
+  const gen & minus_sqrt3_3 = minus_sqrt3_3_storage;
 
   const define_tab2_alias_gen(alias_plus_sqrt3_2_tab,_SYMB,0,&plus_sqrt3_symb,_SYMB,0,&inv_2_symb);
   const define_alias_ref_vecteur2(plus_sqrt3_2_refv,alias_plus_sqrt3_2_tab);
   const define_alias_ref_symbolic( plus_sqrt3_2_symb ,alias_at_prod,_VECT,_SEQ__VECT,&plus_sqrt3_2_refv);
   const define_alias_gen(alias_plus_sqrt3_2,_SYMB,0,&plus_sqrt3_2_symb);
-  const gen & plus_sqrt3_2 = *(const gen *)&alias_plus_sqrt3_2;
+  static const gen plus_sqrt3_2_storage(plus_sqrt3*gen_inv_2);
+  const gen & plus_sqrt3_2 = plus_sqrt3_2_storage;
 
   const define_tab2_alias_gen(alias_plus_sqrt2_2_tab,_SYMB,0,&plus_sqrt2_symb,_SYMB,0,&inv_2_symb);
   const define_alias_ref_vecteur2(plus_sqrt2_2_refv,alias_plus_sqrt2_2_tab);
   const define_alias_ref_symbolic( plus_sqrt2_2_symb ,alias_at_prod,_VECT,_SEQ__VECT,&plus_sqrt2_2_refv);
   const define_alias_gen(alias_plus_sqrt2_2,_SYMB,0,&plus_sqrt2_2_symb);
-  const gen & plus_sqrt2_2 = *(const gen *)&alias_plus_sqrt2_2;
+  static const gen plus_sqrt2_2_storage(plus_sqrt2*gen_inv_2);
+  const gen & plus_sqrt2_2 = plus_sqrt2_2_storage;
 
   const define_tab2_alias_gen(alias_plus_sqrt3_3_tab,_SYMB,0,&plus_sqrt3_symb,_SYMB,0,&inv_3_symb);
   const define_alias_ref_vecteur2(plus_sqrt3_3_refv,alias_plus_sqrt3_3_tab);
   const define_alias_ref_symbolic( plus_sqrt3_3_symb ,alias_at_prod,_VECT,_SEQ__VECT,&plus_sqrt3_3_refv);
   const define_alias_gen(alias_plus_sqrt3_3,_SYMB,0,&plus_sqrt3_3_symb);
-  const gen & plus_sqrt3_3 = *(const gen *)&alias_plus_sqrt3_3;
+  static const gen plus_sqrt3_3_storage(plus_sqrt3*gen_inv_3);
+  const gen & plus_sqrt3_3 = plus_sqrt3_3_storage;
 
   const define_tab2_alias_gen(alias_cos_pi_12_4_tab,_SYMB,0,&plus_sqrt6_symb,_SYMB,0,&plus_sqrt2_symb);
   const define_alias_ref_vecteur2(cos_pi_12_4_refv,alias_cos_pi_12_4_tab);
@@ -9566,7 +9590,8 @@ double my_tan(double arg){
   const define_alias_ref_vecteur2(cos_pi_12_refv,alias_cos_pi_12_tab);
   const define_alias_ref_symbolic( cos_pi_12_symb ,alias_at_prod,_VECT,_SEQ__VECT,&cos_pi_12_refv);
   const define_alias_gen(alias_cos_pi_12,_SYMB,0,&cos_pi_12_symb);
-  const gen & cos_pi_12 = *(const gen *)&alias_cos_pi_12;
+  static const gen cos_pi_12_storage((plus_sqrt6+plus_sqrt2)*gen_inv_4);
+  const gen & cos_pi_12 = cos_pi_12_storage;
 
   const define_tab2_alias_gen(alias_minus_cos_pi_12_4_tab,_SYMB,0,&minus_sqrt6_symb,_SYMB,0,&minus_sqrt2_symb);
   const define_alias_ref_vecteur2(minus_cos_pi_12_4_refv,alias_minus_cos_pi_12_4_tab);
@@ -9575,7 +9600,8 @@ double my_tan(double arg){
   const define_alias_ref_vecteur2(minus_cos_pi_12_refv,alias_minus_cos_pi_12_tab);
   const define_alias_ref_symbolic( minus_cos_pi_12_symb ,alias_at_prod,_VECT,_SEQ__VECT,&minus_cos_pi_12_refv);
   const define_alias_gen(alias_minus_cos_pi_12,_SYMB,0,&minus_cos_pi_12_symb);
-  const gen & minus_cos_pi_12 = *(const gen *)&alias_minus_cos_pi_12;
+  static const gen minus_cos_pi_12_storage(-cos_pi_12);
+  const gen & minus_cos_pi_12 = minus_cos_pi_12_storage;
 
   const define_tab2_alias_gen(alias_sin_pi_12_4_tab,_SYMB,0,&plus_sqrt6_symb,_SYMB,0,&minus_sqrt2_symb);
   const define_alias_ref_vecteur2(sin_pi_12_4_refv,alias_sin_pi_12_4_tab);
@@ -9584,7 +9610,8 @@ double my_tan(double arg){
   const define_alias_ref_vecteur2(sin_pi_12_refv,alias_sin_pi_12_tab);
   const define_alias_ref_symbolic( sin_pi_12_symb ,alias_at_prod,_VECT,_SEQ__VECT,&sin_pi_12_refv);
   const define_alias_gen(alias_sin_pi_12,_SYMB,0,&sin_pi_12_symb);
-  const gen & sin_pi_12 = *(const gen *)&alias_sin_pi_12;
+  static const gen sin_pi_12_storage((plus_sqrt6+minus_sqrt2)*gen_inv_4);
+  const gen & sin_pi_12 = sin_pi_12_storage;
 
   const define_tab2_alias_gen(alias_minus_sin_pi_12_4_tab,_SYMB,0,&plus_sqrt2_symb,_SYMB,0,&minus_sqrt6_symb);
   const define_alias_ref_vecteur2(minus_sin_pi_12_4_refv,alias_minus_sin_pi_12_4_tab);
@@ -9593,35 +9620,42 @@ double my_tan(double arg){
   const define_alias_ref_vecteur2(minus_sin_pi_12_refv,alias_minus_sin_pi_12_tab);
   const define_alias_ref_symbolic( minus_sin_pi_12_symb ,alias_at_prod,_VECT,_SEQ__VECT,&minus_sin_pi_12_refv);
   const define_alias_gen(alias_minus_sin_pi_12,_SYMB,0,&minus_sin_pi_12_symb);
-  const gen & minus_sin_pi_12 = *(const gen *)&alias_minus_sin_pi_12;
+  static const gen minus_sin_pi_12_storage(-sin_pi_12);
+  const gen & minus_sin_pi_12 = minus_sin_pi_12_storage;
 
   const define_tab2_alias_gen(alias_tan_pi_12_tab,_INT_,0,2,_SYMB,0,&minus_sqrt3_symb);
   const define_alias_ref_vecteur2(tan_pi_12_refv,alias_tan_pi_12_tab);
   const define_alias_ref_symbolic( tan_pi_12_symb ,alias_at_plus,_VECT,_SEQ__VECT,&tan_pi_12_refv);
   const define_alias_gen(alias_tan_pi_12,_SYMB,0,&tan_pi_12_symb);
-  const gen & tan_pi_12 = *(const gen *)&alias_tan_pi_12;
+  static const gen tan_pi_12_storage(2+minus_sqrt3);
+  const gen & tan_pi_12 = tan_pi_12_storage;
 
   const define_tab2_alias_gen(alias_tan_5pi_12_tab,_INT_,0,2,_SYMB,0,&plus_sqrt3_symb);
   const define_alias_ref_vecteur2(tan_5pi_12_refv,alias_tan_5pi_12_tab);
   const define_alias_ref_symbolic( tan_5pi_12_symb ,alias_at_plus,_VECT,_SEQ__VECT,&tan_5pi_12_refv);
   const define_alias_gen(alias_tan_5pi_12,_SYMB,0,&tan_5pi_12_symb);
-  const gen & tan_5pi_12 = *(const gen *)&alias_tan_5pi_12;
+  static const gen tan_5pi_12_storage(2+plus_sqrt3);
+  const gen & tan_5pi_12 = tan_5pi_12_storage;
 
   const define_alias_ref_symbolic( minus_tan_pi_12_symb ,alias_at_neg,_SYMB,0,&tan_pi_12_symb);
   const define_alias_gen(alias_minus_tan_pi_12,_SYMB,0,&minus_tan_pi_12_symb);
-  const gen & minus_tan_pi_12 = *(const gen *)&alias_minus_tan_pi_12;
+  static const gen minus_tan_pi_12_storage(-tan_pi_12);
+  const gen & minus_tan_pi_12 = minus_tan_pi_12_storage;
 
   const define_alias_ref_symbolic( minus_tan_5pi_12_symb ,alias_at_neg,_SYMB,0,&tan_5pi_12_symb);
   const define_alias_gen(alias_minus_tan_5pi_12,_SYMB,0,&minus_tan_5pi_12_symb);
-  const gen & minus_tan_5pi_12 = *(const gen *)&alias_minus_tan_5pi_12;
+  static const gen minus_tan_5pi_12_storage(-tan_5pi_12);
+  const gen & minus_tan_5pi_12 = minus_tan_5pi_12_storage;
 
   const define_alias_ref_symbolic( inv_pi_symb,alias_at_inv,_IDNT,0,&ref_pi);
   const define_alias_gen(alias_inv_pi,_SYMB,0,&inv_pi_symb);
-  const gen & cst_inv_pi = * (const gen *) &alias_inv_pi;
+  static const gen cst_inv_pi_storage(symb_inv(cst_pi));
+  const gen & cst_inv_pi = cst_inv_pi_storage;
 
   const define_alias_ref_symbolic( inv_180_symb,alias_at_inv,_INT_,0,180);
   const define_alias_gen(alias_inv_180,_SYMB,0,&inv_180_symb);
-  const gen & cst_inv_180 = * (const gen *) &alias_inv_180;
+  static const gen cst_inv_180_storage(symb_inv(180));
+  const gen & cst_inv_180 = cst_inv_180_storage;
 
   const define_tab2_alias_gen(alias_rad2deg_e_tab,_INT_,0,180,_SYMB,0,&inv_pi_symb);
   const define_alias_ref_vecteur2(rad2deg_e_refv,alias_rad2deg_e_tab);
@@ -9650,20 +9684,20 @@ double my_tan(double arg){
 
 
   // 0 = -pi, 12=0, 24=pi
-  static const alias_gen * const table_cos_alias[trig_deno+1]={
-    &alias_minus_one,&alias_minus_cos_pi_12,&alias_minus_sqrt3_2,&alias_minus_sqrt2_2,&alias_minus_one_half,&alias_minus_sin_pi_12,
-    &alias_zero,&alias_sin_pi_12,&alias_plus_one_half,&alias_plus_sqrt2_2,&alias_plus_sqrt3_2,&alias_cos_pi_12,
-    &alias_plus_one,&alias_cos_pi_12,&alias_plus_sqrt3_2,&alias_plus_sqrt2_2,&alias_plus_one_half,&alias_sin_pi_12,
-    &alias_zero,&alias_minus_sin_pi_12,&alias_minus_one_half,&alias_minus_sqrt2_2,&alias_minus_sqrt3_2,&alias_minus_cos_pi_12,
-    &alias_minus_one
+  static const gen * const table_cos_gen[trig_deno+1]={
+    &minus_one,&minus_cos_pi_12,&minus_sqrt3_2,&minus_sqrt2_2,&minus_one_half,&minus_sin_pi_12,
+    &zero,&sin_pi_12,&plus_one_half,&plus_sqrt2_2,&plus_sqrt3_2,&cos_pi_12,
+    &plus_one,&cos_pi_12,&plus_sqrt3_2,&plus_sqrt2_2,&plus_one_half,&sin_pi_12,
+    &zero,&minus_sin_pi_12,&minus_one_half,&minus_sqrt2_2,&minus_sqrt3_2,&minus_cos_pi_12,
+    &minus_one
   };
-  const gen * const * table_cos= (const gen **) table_cos_alias;
-  static const alias_gen * const table_tan_alias[trig_deno/2+1]={
-    &alias_zero,&alias_tan_pi_12,&alias_plus_sqrt3_3,&alias_plus_one,&alias_plus_sqrt3,&alias_tan_5pi_12,
-    &alias_unsigned_inf,&alias_minus_tan_5pi_12,&alias_minus_sqrt3,&alias_minus_one,&alias_minus_sqrt3_3,&alias_minus_tan_pi_12,
-    &alias_zero
+  const gen * const * table_cos = table_cos_gen;
+  static const gen * const table_tan_gen[trig_deno/2+1]={
+    &zero,&tan_pi_12,&plus_sqrt3_3,&plus_one,&plus_sqrt3,&tan_5pi_12,
+    &unsigned_inf,&minus_tan_5pi_12,&minus_sqrt3,&minus_one,&minus_sqrt3_3,&minus_tan_pi_12,
+    &zero
   };
-  const gen * const * table_tan = (const gen **) table_tan_alias;
+  const gen * const * table_tan = table_tan_gen;
 
 #endif // GIAC_GENERIC_CONSTANTS
 

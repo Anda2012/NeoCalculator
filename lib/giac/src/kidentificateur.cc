@@ -99,7 +99,8 @@ namespace giac {
   const char string_euler_gamma[]="euler_gamma";
   static const alias_ref_identificateur ref_euler_gamma={-1,0,0,string_euler_gamma,0,0};
   const define_alias_gen(alias_cst_euler_gamma,_IDNT,0,&ref_euler_gamma);
-  const gen & cst_euler_gamma = * (gen *) & alias_cst_euler_gamma;
+  static const gen cst_euler_gamma_storage{identificateur(string_euler_gamma)};
+  const gen & cst_euler_gamma = cst_euler_gamma_storage;
 
   const char string_pi[]="pi";
   static const alias_identificateur alias_identificateur_pi={0,0,string_pi,0,0};
@@ -108,7 +109,8 @@ namespace giac {
   }
   const alias_ref_identificateur ref_pi={-1,0,0,string_pi,0,0};
   const define_alias_gen(alias_cst_pi,_IDNT,0,&ref_pi);
-  const gen & cst_pi = * (gen *) & alias_cst_pi;
+  static const gen cst_pi_storage{_IDNT_pi()};
+  const gen & cst_pi = cst_pi_storage;
 
   const char string_infinity[]="infinity";
   static const alias_identificateur alias_identificateur_infinity={0,0,string_infinity,0,0};
@@ -117,7 +119,8 @@ namespace giac {
   }
   const alias_ref_identificateur ref_infinity={-1,0,0,string_infinity,0,0};
   const define_alias_gen(alias_unsigned_inf,_IDNT,0,&ref_infinity);
-  const gen & unsigned_inf = * (gen *) & alias_unsigned_inf;
+  static const gen unsigned_inf_storage{_IDNT_infinity()};
+  const gen & unsigned_inf = unsigned_inf_storage;
 
   const char string_undef[]="undef";
   static const alias_identificateur alias_identificateur_undef={0,0,string_undef,0,0};
