@@ -1480,6 +1480,9 @@ void MathCanvas::drawText(lv_layer_t* layer, int16_t x, int16_t yBaseline,
     dsc.font  = font;
     dsc.color = color;
     dsc.text  = renderText;
+    dsc.text_length = static_cast<uint32_t>(std::strlen(renderText));
+    // LVGL draw tasks are deferred; copy text to avoid dangling pointers.
+    dsc.text_local = 1;
     dsc.opa   = LV_OPA_COVER;
 
     // El área define el bounding box del texto.
@@ -1487,10 +1490,6 @@ void MathCanvas::drawText(lv_layer_t* layer, int16_t x, int16_t yBaseline,
     // Tope = yBaseline - ascent (donde ascent = line_height - base_line)
     int16_t fontAscent = static_cast<int16_t>(font->line_height - font->base_line);
     int16_t yTop = static_cast<int16_t>(yBaseline - fontAscent);
-
-    // Calcular el ancho del texto
-    // Usamos el largo del texto y el ancho de carácter de la fuente
-    int32_t textLen = static_cast<int32_t>(std::strlen(renderText));
 
     // Para el ancho, medimos cada carácter usando la fuente
     int32_t textWidth = 0;
@@ -1522,10 +1521,15 @@ void MathCanvas::drawText(lv_layer_t* layer, int16_t x, int16_t yBaseline,
         if (ok) textWidth += glyph.adv_w;
     }
 
+    // Avoid zero/negative draw area which LVGL skips.
+    if (textWidth <= 0) {
+        textWidth = std::max<int32_t>(1, font->line_height / 2);
+    }
+
     lv_area_t area;
     area.x1 = x;
     area.y1 = yTop;
-    area.x2 = static_cast<int32_t>(x + textWidth);
+    area.x2 = static_cast<int32_t>(x + textWidth - 1);
     area.y2 = static_cast<int32_t>(yTop + font->line_height - 1);
 
     lv_draw_label(layer, &dsc, &area);

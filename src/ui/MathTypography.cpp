@@ -15,6 +15,8 @@ void initMathTypography() {
 
     lv_style_init(&style_math_primary);
     lv_style_set_text_font(&style_math_primary, &stix_math_18);
+    lv_style_set_text_color(&style_math_primary, lv_color_black());
+    lv_style_set_text_opa(&style_math_primary, LV_OPA_COVER);
 
     g_mathTypographyInited = true;
 }
