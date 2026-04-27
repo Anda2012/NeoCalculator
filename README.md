@@ -619,9 +619,19 @@ NumOS is an open-source project that aspires to grow with a community. Contribut
 
 <sub>*This project was developed with AI assistance (Claude/Copilot) for code generation, guided by the author's systems architecture decisions. All design choices like DAG structure, memory management, parser design, were made and validated by the author.*</sub>
 
-## Licence
+## License & Intellectual Property
 
-This project is licensed under the **MIT** licence. See [LICENSE](LICENSE) for details.
+### Software (Firmware)
+The **NeoCalculator** firmware (**NumOS**) is licensed under the **GNU GPL v3**. 
+We are proud to build upon the **Giac** engine by Bernard Parisse. In accordance with the GPL v3, all software source code in this repository is open for study, modification, and redistribution.
+
+### Hardware & Industrial Design
+**All rights reserved.** The hardware design, including but not limited to:
+* PCB Schematics and Layouts (KiCad files, Gerbers).
+* Industrial Design and 3D Models (STL, STEP, CAD files).
+* The "Exam Key" security architecture.
+
+Are **proprietary** and the intellectual property of Juan Ramón. No commercial use or reproduction of the hardware is permitted without express authorization.
 
 ---
 
