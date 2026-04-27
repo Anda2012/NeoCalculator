@@ -5,7 +5,12 @@ set -euo pipefail
 # Requirements:
 #   npm i -g lv_font_conv
 # Usage:
-#   ./scripts/generate_stix_math_font.sh [path-to-STIXTwoMath-Regular.ttf]
+#   ./scripts/generate_stix_math_font.sh [path-to-STIXTwoMath-Regular.ttf] [bpp]
+#
+# Examples:
+#   ./scripts/generate_stix_math_font.sh "C:/.../STIXTwoMath-Regular.ttf"
+#   ./scripts/generate_stix_math_font.sh "C:/.../STIXTwoMath-Regular.ttf" 2
+#   STIX_BPP=1 ./scripts/generate_stix_math_font.sh "C:/.../STIXTwoMath-Regular.ttf"
 #
 # Default output:
 #   src/fonts/stix_math_18.c
@@ -14,11 +19,23 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 FONT_FILE="${1:-${ROOT_DIR}/assets/fonts/STIXTwoMath-Regular.ttf}"
 
 # Accept Windows-style paths passed from PowerShell by normalizing to POSIX
-# when running under bash.
-if [[ "${FONT_FILE}" =~ ^[A-Za-z]:/ ]]; then
-  FONT_FILE="/mnt/${FONT_FILE:0:1,,}/${FONT_FILE:3}"
+# when running under bash. Handles both C:/... and C:\... forms.
+if [[ "${FONT_FILE}" =~ ^([A-Za-z]):[\\/](.*)$ ]]; then
+  drive_letter="${BASH_REMATCH[1],,}"
+  path_tail="${BASH_REMATCH[2]//\\//}"
+  FONT_FILE="/mnt/${drive_letter}/${path_tail}"
 fi
 OUT_FILE="${ROOT_DIR}/src/fonts/stix_math_18.c"
+
+# LVGL font bitmap depth (1,2,3,4,8). Default keeps previous behavior.
+BPP_RAW="${2:-${STIX_BPP:-4}}"
+case "${BPP_RAW}" in
+  1|2|3|4|8) ;;
+  *)
+    echo "Invalid BPP '${BPP_RAW}'. Allowed values: 1,2,3,4,8" >&2
+    exit 1
+    ;;
+esac
 
 if [[ ! -f "${FONT_FILE}" ]]; then
   echo "Missing font file: ${FONT_FILE}" >&2
@@ -38,14 +55,14 @@ run_conv() {
   lv_font_conv \
     --font "${FONT_FILE}" \
     --size 18 \
-    --bpp 4 \
+    --bpp "${BPP_RAW}" \
     --format lvgl \
     --range "${ranges}" \
     --symbols "${SYMBOLS}" \
     -o "${OUT_FILE}"
 }
 
-echo "[stix] Generating ${OUT_FILE}"
+echo "[stix] Generating ${OUT_FILE} (bpp=${BPP_RAW})"
 if ! run_conv "${BASE_RANGES},${OPTIONAL_RANGE}"; then
   echo "[stix] Optional range ${OPTIONAL_RANGE} not present in this TTF, retrying without it"
   run_conv "${BASE_RANGES}"

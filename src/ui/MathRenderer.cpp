@@ -1475,64 +1475,86 @@ void MathCanvas::drawText(lv_layer_t* layer, int16_t x, int16_t yBaseline,
     const std::string normalized = normalizeSymbolText(text);
     const char* renderText = normalized.empty() ? text : normalized.c_str();
 
-    lv_draw_label_dsc_t dsc;
-    lv_draw_label_dsc_init(&dsc);
-    dsc.font  = font;
-    dsc.color = color;
-    dsc.text  = renderText;
-    dsc.text_length = static_cast<uint32_t>(std::strlen(renderText));
-    // LVGL draw tasks are deferred; copy text to avoid dangling pointers.
-    dsc.text_local = 1;
-    dsc.opa   = LV_OPA_COVER;
-
     // El área define el bounding box del texto.
     // LVGL dibuja el texto desde el tope del área.
     // Tope = yBaseline - ascent (donde ascent = line_height - base_line)
     int16_t fontAscent = static_cast<int16_t>(font->line_height - font->base_line);
     int16_t yTop = static_cast<int16_t>(yBaseline - fontAscent);
 
-    // Para el ancho, medimos cada carácter usando la fuente
-    int32_t textWidth = 0;
-    const char* p = renderText;
-    while (*p) {
-        lv_font_glyph_dsc_t glyph;
-        uint32_t letter = static_cast<uint32_t>(static_cast<uint8_t>(*p));
-
-        // Manejar UTF-8 multibyte (operadores −, ×)
-        if ((letter & 0x80) != 0) {
-            // Decodificar UTF-8
-            if ((letter & 0xE0) == 0xC0 && p[1]) {
-                letter = ((letter & 0x1F) << 6) | (static_cast<uint8_t>(p[1]) & 0x3F);
-                p += 2;
-            } else if ((letter & 0xF0) == 0xE0 && p[1] && p[2]) {
-                letter = ((letter & 0x0F) << 12)
-                       | ((static_cast<uint8_t>(p[1]) & 0x3F) << 6)
-                       | (static_cast<uint8_t>(p[2]) & 0x3F);
-                p += 3;
-            } else {
-                p++;  // Saltar byte inválido
-                continue;
-            }
-        } else {
-            p++;
+    auto decodeUtf8 = [](const uint8_t* s, uint32_t* outCp) -> uint8_t {
+        if (!s || !s[0]) {
+            *outCp = 0;
+            return 0;
         }
 
-        bool ok = lv_font_get_glyph_dsc(font, &glyph, letter, 0);
-        if (ok) textWidth += glyph.adv_w;
+        const uint8_t b0 = s[0];
+        if ((b0 & 0x80) == 0) {
+            *outCp = b0;
+            return 1;
+        }
+
+        if ((b0 & 0xE0) == 0xC0 && s[1]) {
+            *outCp = ((static_cast<uint32_t>(b0 & 0x1F) << 6)
+                   |  (static_cast<uint32_t>(s[1] & 0x3F)));
+            return 2;
+        }
+
+        if ((b0 & 0xF0) == 0xE0 && s[1] && s[2]) {
+            *outCp = ((static_cast<uint32_t>(b0 & 0x0F) << 12)
+                   |  (static_cast<uint32_t>(s[1] & 0x3F) << 6)
+                   |  (static_cast<uint32_t>(s[2] & 0x3F)));
+            return 3;
+        }
+
+        if ((b0 & 0xF8) == 0xF0 && s[1] && s[2] && s[3]) {
+            *outCp = ((static_cast<uint32_t>(b0 & 0x07) << 18)
+                   |  (static_cast<uint32_t>(s[1] & 0x3F) << 12)
+                   |  (static_cast<uint32_t>(s[2] & 0x3F) << 6)
+                   |  (static_cast<uint32_t>(s[3] & 0x3F)));
+            return 4;
+        }
+
+        // Byte inválido: consumir 1 para evitar bucles infinitos.
+        *outCp = '?';
+        return 1;
+    };
+
+    const uint8_t* p = reinterpret_cast<const uint8_t*>(renderText);
+    int32_t penX = x;
+
+    while (*p) {
+        uint32_t cp = 0;
+        const uint8_t step = decodeUtf8(p, &cp);
+
+        uint32_t nextCp = 0;
+        const uint8_t* nextPtr = p + step;
+        if (*nextPtr) {
+            decodeUtf8(nextPtr, &nextCp);
+        }
+
+        lv_font_glyph_dsc_t glyph;
+        const bool ok = lv_font_get_glyph_dsc(font, &glyph, cp, nextCp);
+        if (ok) {
+            lv_draw_letter_dsc_t dsc;
+            lv_draw_letter_dsc_init(&dsc);
+            dsc.font = font;
+            dsc.color = color;
+            dsc.opa = LV_OPA_COVER;
+            dsc.unicode = cp;
+
+            lv_point_t letterPos;
+            letterPos.x = static_cast<int32_t>(penX);
+            letterPos.y = static_cast<int32_t>(yTop);
+
+            lv_draw_letter(layer, &dsc, &letterPos);
+            penX += glyph.adv_w;
+        } else {
+            // Fallback de avance mínimo para no superponer caracteres desconocidos.
+            penX += std::max<int32_t>(1, font->line_height / 3);
+        }
+
+        p += step;
     }
-
-    // Avoid zero/negative draw area which LVGL skips.
-    if (textWidth <= 0) {
-        textWidth = std::max<int32_t>(1, font->line_height / 2);
-    }
-
-    lv_area_t area;
-    area.x1 = x;
-    area.y1 = yTop;
-    area.x2 = static_cast<int32_t>(x + textWidth - 1);
-    area.y2 = static_cast<int32_t>(yTop + font->line_height - 1);
-
-    lv_draw_label(layer, &dsc, &area);
 }
 
 void MathCanvas::drawLine(lv_layer_t* layer,
