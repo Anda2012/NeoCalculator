@@ -25,10 +25,6 @@
 [![Support via Ko-fi](https://img.shields.io/badge/Support-Ko--fi-F16061?logo=ko-fi&logoColor=white)](https://ko-fi.com/enderdesigns)
 
 <br>
-
-> **👋 ¡Hola, lectores de Xataka!**
-> *Si venís desde el reportaje y compartís la misión de democratizar las calculadoras científicas, podéis apoyar el proyecto en **[Ko-fi](https://ko-fi.com/enderdesigns)**. Mientras el Grant de EE.UU. cubre el hardware, vuestras aportaciones financian la "parte invisible" (herramientas de IA para optimización C++, dominios y envío de betas) para que NumOS siga siendo independiente y Open Source.*
-
 <div align="center">
   </div>
 
