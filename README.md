@@ -20,8 +20,8 @@
 [![Status](https://img.shields.io/badge/Status-Pro--CAS%20Production-brightgreen)](#project-status)
 [![RAM](https://img.shields.io/badge/RAM-29.7%25%20%E2%80%94%2097.2%20KB-informational)](#build-stats)
 [![Flash](https://img.shields.io/badge/Flash-23.2%25%20%E2%80%94%201.52%20MB-informational)](#build-stats)
-[![GitHub Stars](https://img.shields.io/github/stars/El-EnderJ/NeoCalculator?style=social)](https://github.com/El-EnderJ/NeoCalculator)
-[![GitHub Forks](https://img.shields.io/github/forks/El-EnderJ/NeoCalculator?style=social)](https://github.com/El-EnderJ/NeoCalculator)
+[![GitHub Stars](https://img.shields.io/github/stars/Anda2012/NeoCalculator?style=social)](https://github.com/El-EnderJ/NeoCalculator)
+[![GitHub Forks](https://img.shields.io/github/forks/Anda2012/NeoCalculator?style=social)](https://github.com/El-EnderJ/NeoCalculator)
 [![Support via Ko-fi](https://img.shields.io/badge/Support-Ko--fi-F16061?logo=ko-fi&logoColor=white)](https://ko-fi.com/enderdesigns)
 
 <br>
@@ -274,13 +274,13 @@ build_src_filter = +<*> +<../tests/CASTest.cpp>
 
 | Component | Specification |
 |:----------|:-------------|
-| **MCU** | ESP32-S3 N16R8 CAM — Dual-core Xtensa LX7 @ 240 MHz |
+| **MCU** | ESP32-S3 N16R8 Wroom - 1 — Dual-core Xtensa LX7 @ 240 MHz |
 | **Flash** | 16 MB QIO (`default_16MB.csv`) |
 | **PSRAM** | 8 MB OPI (`qio_opi` — critical to prevent boot panic) |
 | **Display** | ILI9341 IPS TFT 3.2" — 320×240 px — SPI @ 10 MHz (verified) |
 | **SPI Bus** | FSPI (SPI2): MOSI=13, SCLK=12, CS=10, DC=4, RST=5 |
 | **Backlight** | GPIO 45 — hardwired to 3.3V (`pinMode(45, INPUT)`) |
-| **Keyboard** | 5×10 matrix (Phase 7) — Rows OUTPUT: GPIO 1,2,41,42,40 · Cols INPUT_PULLUP: GPIO 6,7,8… |
+| **Keyboard** | 6×8 matrix (Phase -) — Rows OUTPUT: GPIO 1,2,3,6,7,8 · Cols INPUT_PULLUP: GPIO 38,39,40,41,42,47,48,21 |
 | **Storage** | LittleFS on dedicated partition — persistent A–Z variables |
 | **USB** | Native USB-CDC on S3 — 115 200 baud |
 
@@ -293,23 +293,23 @@ build_src_filter = +<*> +<../tests/CASTest.cpp>
 | MOSI | 13 | FSPI Data In |
 | SCLK | 12 | FSPI Clock |
 | CS | 10 | Chip Select (active LOW) |
-| DC | **4** | Data/Command |
-| RST | **5** | Reset |
+| DC | 4 | Data/Command |
+| RST | 5 | Reset |
 | BL | 45 | Hardwired to 3.3V — always INPUT |
 
-#### 5×10 Keyboard Matrix (driver `Keyboard`, Phase 7)
+#### 6×8 Keyboard Matrix (driver `Keyboard`, Phase 7)
 
 | Row | GPIO | Role | Column | GPIO | Role |
 |:----|:----:|:-----|:-------|:----:|:-----|
-| ROW 0 | 1 | OUTPUT | COL 0 | 6 | INPUT_PULLUP |
-| ROW 1 | 2 | OUTPUT | COL 1 | 7 | INPUT_PULLUP |
-| ROW 2 | 41 | OUTPUT | COL 2 | 8 | INPUT_PULLUP |
-| ROW 3 | 42 | OUTPUT | COL 3–9 | 3,15,16,17,18,21,47 | not yet wired |
-| ROW 4 | 40 | OUTPUT | — | — | — |
+| ROW 0 | 1 | OUTPUT | COL 0 | 38 | INPUT_PULLUP |
+| ROW 1 | 2 | OUTPUT | COL 1 | 39 | INPUT_PULLUP |
+| ROW 2 | 3 | OUTPUT | COL 2 | 40 | INPUT_PULLUP |
+| ROW 3 | 6 | OUTPUT | COL 3 | 41 | INPUT_PULLUP |
+| ROW 4 | 7 | OUTPUT | COL 4 | 42 | INPUT_PULLUP |
+| ROW 5 | 8 | OUTPUT | COL 5 | 47 | INPUT_PULLUP |
+|  --   | - |   --   | COL 6 | 48 | INPUT_PULLUP |
+|  --   | - |   --   | COL 7 | 21 | INPUT_PULLUP |
 
-> ✅ **GPIO 4/5 conflict resolved (2026-03-02)**: Keyboard columns C0 and C1 reassigned from GPIO 4/5 (`TFT_DC`/`TFT_RST`) to GPIO 6/7. The three currently wired columns use GPIO 6, 7, and 8 — no display conflict.
-
----
 
 ## Quick Start
 
