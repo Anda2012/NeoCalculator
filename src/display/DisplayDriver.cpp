@@ -117,7 +117,7 @@ void DisplayDriver::begin() {
     }
 #endif
     _tft.setRotation(SCREEN_ROTATION);
-    _tft.invertDisplay(true); // colors inverted
+    _tft.invertDisplay(false);
 
     // Ensure CS and DC pins are correctly configured for manual control
     pinMode(TFT_CS, OUTPUT);

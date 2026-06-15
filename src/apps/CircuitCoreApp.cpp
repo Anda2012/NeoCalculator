@@ -1,18 +1,3 @@
-/*
- * NeoCalculator - NumOS
- * Copyright (C) 2026 Juan Ramon
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
- */
-
 /**
  * CircuitCoreApp.cpp — Real-time SPICE-like Circuit Simulator for NumOS.
  *
@@ -352,7 +337,7 @@ void CircuitCoreApp::createInfoBar() {
     lv_obj_set_size(_infoLabel, SCREEN_W - 8, INFOBAR_H);
     lv_obj_set_style_bg_color(_infoLabel, lv_color_hex(COL_INFO_BG), LV_PART_MAIN);
     lv_obj_set_style_bg_opa(_infoLabel, LV_OPA_COVER, LV_PART_MAIN);
-    lv_obj_set_style_text_font(_infoLabel, &stix_math_18, LV_PART_MAIN);
+    lv_obj_set_style_text_font(_infoLabel, &lv_font_montserrat_10, LV_PART_MAIN);
     lv_obj_set_style_text_color(_infoLabel, lv_color_hex(COL_INFO_TEXT), LV_PART_MAIN);
     lv_label_set_text(_infoLabel, "Ready");
 }
@@ -2062,4 +2047,3 @@ void CircuitCoreApp::handleKeyIDE(const KeyEvent& ev) {
             break;
     }
 }
-

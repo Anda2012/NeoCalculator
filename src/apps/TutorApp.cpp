@@ -1,22 +1,7 @@
-/*
- * NeoCalculator - NumOS
- * Copyright (C) 2026 Juan Ramon
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
- */
-
 /**
  * TutorApp.cpp — Step-by-step algebraic equation tutor (Phase 13C).
  *
- * Part of: NumOS CAS-S3 — Phase 13C (TRS→Display Bridge)
+ * Part of: NumOS CAS-S3-ULTRA — Phase 13C (TRS→Display Bridge)
  */
 
 #include "TutorApp.h"
@@ -282,7 +267,7 @@ void TutorApp::buildUI() {
 
     _titleLabel = lv_label_create(bar);
     lv_label_set_text(_titleLabel, "Equation Tutor");
-    lv_obj_set_style_text_font(_titleLabel, &stix_math_18, LV_PART_MAIN);
+    lv_obj_set_style_text_font(_titleLabel, &lv_font_montserrat_14, LV_PART_MAIN);
     lv_obj_set_style_text_color(_titleLabel, lv_color_white(), LV_PART_MAIN);
     lv_obj_align(_titleLabel, LV_ALIGN_LEFT_MID, PAD, 0);
 
@@ -295,7 +280,7 @@ void TutorApp::buildUI() {
     lv_textarea_set_placeholder_text(_inputField, "e.g. 2x + 6 = 0");
     lv_obj_set_style_bg_color(_inputField, lv_color_hex(COL_INPUT_BG), LV_PART_MAIN);
     lv_obj_set_style_text_color(_inputField, lv_color_white(), LV_PART_MAIN);
-    lv_obj_set_style_text_font(_inputField, &stix_math_18, LV_PART_MAIN);
+    lv_obj_set_style_text_font(_inputField, &lv_font_montserrat_12, LV_PART_MAIN);
     lv_obj_set_style_border_color(_inputField, lv_color_hex(0x4A90D9), LV_PART_MAIN);
     lv_obj_set_style_border_width(_inputField, 1, LV_PART_MAIN);
     lv_obj_set_style_pad_all(_inputField, 4, LV_PART_MAIN);
@@ -310,7 +295,7 @@ void TutorApp::buildUI() {
 
     lv_obj_t* btnLbl = lv_label_create(_solveBtn);
     lv_label_set_text(btnLbl, "Solve  (ENTER)");
-    lv_obj_set_style_text_font(btnLbl, &stix_math_18, LV_PART_MAIN);
+    lv_obj_set_style_text_font(btnLbl, &lv_font_montserrat_12, LV_PART_MAIN);
     lv_obj_set_style_text_color(btnLbl, lv_color_hex(COL_BTN_TXT), LV_PART_MAIN);
     lv_obj_align(btnLbl, LV_ALIGN_CENTER, 0, 0);
 
@@ -322,7 +307,7 @@ void TutorApp::buildUI() {
     lv_obj_set_width(_statusLabel, SCREEN_W - 2 * PAD);
     lv_label_set_long_mode(_statusLabel, LV_LABEL_LONG_WRAP);
     lv_label_set_text(_statusLabel, "Type an equation above and press Solve.");
-    lv_obj_set_style_text_font(_statusLabel, &stix_math_18, LV_PART_MAIN);
+    lv_obj_set_style_text_font(_statusLabel, &lv_font_montserrat_10, LV_PART_MAIN);
     lv_obj_set_style_text_color(_statusLabel, lv_color_hex(0x888888), LV_PART_MAIN);
 
     // ── Scrollable steps container ──────────────────────────────────────────
@@ -428,7 +413,7 @@ void TutorApp::onSolveClicked() {
         lv_label_set_text(descLbl, buf);
         lv_obj_set_width(descLbl, CANVAS_MAX_W);
         lv_label_set_long_mode(descLbl, LV_LABEL_LONG_WRAP);
-        lv_obj_set_style_text_font(descLbl, &stix_math_18, LV_PART_MAIN);
+        lv_obj_set_style_text_font(descLbl, &lv_font_montserrat_12, LV_PART_MAIN);
         lv_obj_set_style_text_color(descLbl, lv_color_hex(descColHex), LV_PART_MAIN);
 
         // ── MathCanvas for this step's equation ───────────────────────────
@@ -555,4 +540,3 @@ void TutorApp::handleKey(const KeyEvent& ev) {
         default: break;
     }
 }
-

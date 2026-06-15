@@ -1,18 +1,3 @@
-/*
- * NeoCalculator - NumOS
- * Copyright (C) 2026 Juan Ramon
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
- */
-
 /**
  * Fluid2DApp.cpp — Real-Time 2D Fluid Simulator for NumOS.
  *
@@ -250,7 +235,7 @@ void Fluid2DApp::createUI() {
 
     _infoLabel = lv_label_create(_screen);
     lv_obj_set_pos(_infoLabel, 4, SCREEN_H - INFO_H - 2);
-    lv_obj_set_style_text_font(_infoLabel, &stix_math_18, LV_PART_MAIN);
+    lv_obj_set_style_text_font(_infoLabel, &lv_font_montserrat_10, LV_PART_MAIN);
     lv_obj_set_style_text_color(_infoLabel, lv_color_hex(COL_TEXT_DIM), LV_PART_MAIN);
     updateInfoLabel();
 
@@ -1302,7 +1287,7 @@ void Fluid2DApp::onDraw(lv_event_t* e) {
             lv_draw_label_dsc_t tipLbl;
             lv_draw_label_dsc_init(&tipLbl);
             tipLbl.color = lv_color_hex(0xE0E0E0);
-            tipLbl.font = &stix_math_18;
+            tipLbl.font = &lv_font_montserrat_10;
             tipLbl.text = probeBuf;
             lv_draw_label(layer, &tipLbl, &tipBg);
         }
@@ -1520,4 +1505,3 @@ void Fluid2DApp::autoLoad() {
     }
 #endif
 }
-

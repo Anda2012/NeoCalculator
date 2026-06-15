@@ -668,6 +668,7 @@ void SystemApp::handleKeyMenu(const KeyEvent &ev) {
             }
             break;
         case KeyCode::ENTER:
+        case KeyCode::EXE:
         case KeyCode::AC:
         case KeyCode::DEL:
         case KeyCode::F1:
@@ -1013,7 +1014,7 @@ void SystemApp::powerOff() {
     // Label "Apagando..." sutil, centrado
     lv_obj_t* lblBye = lv_label_create(scrOff);
     lv_label_set_text(lblBye, LV_SYMBOL_POWER " Apagando...");
-    lv_obj_set_style_text_font(lblBye, &stix_math_18, 0);
+    lv_obj_set_style_text_font(lblBye, LV_FONT_DEFAULT, 0);
     lv_obj_set_style_text_color(lblBye, lv_color_make(0x80, 0x80, 0x80), 0);
     lv_obj_set_style_text_align(lblBye, LV_TEXT_ALIGN_CENTER, 0);
     lv_obj_align(lblBye, LV_ALIGN_CENTER, 0, 0);

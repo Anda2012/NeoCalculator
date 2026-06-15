@@ -1,18 +1,3 @@
-/*
- * NeoCalculator - NumOS
- * Copyright (C) 2026 Juan Ramon
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
- */
-
 /**
  * Components.cpp — Circuit component implementations.
  *
@@ -444,7 +429,7 @@ void MCUComponent::draw(lv_layer_t* layer, int offsetX, int offsetY) {
     lv_draw_label_dsc_t labdsc;
     lv_draw_label_dsc_init(&labdsc);
     labdsc.color = lv_color_hex(0xFFFFFF);
-    labdsc.font  = &stix_math_18;
+    labdsc.font  = &lv_font_montserrat_10;
     labdsc.text  = "uC";
 
     lv_area_t labArea;
@@ -1377,4 +1362,3 @@ void SevenSegment::draw(lv_layer_t* layer, int offsetX, int offsetY) {
     dsc.p2.x = cx + 20; dsc.p2.y = cy;
     lv_draw_line(layer, &dsc);
 }
-

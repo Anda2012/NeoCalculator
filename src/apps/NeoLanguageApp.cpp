@@ -1,18 +1,3 @@
-/*
- * NeoCalculator - NumOS
- * Copyright (C) 2026 Juan Ramon
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
- */
-
 /**
  * NeoLanguageApp.cpp — NeoLanguage IDE implementation.
  *
@@ -67,7 +52,7 @@ static lv_obj_t* makeLabel(lv_obj_t* parent,
                             int x, int y,
                             const char* text,
                             uint32_t color,
-                            const lv_font_t* font = &stix_math_18) {
+                            const lv_font_t* font = &lv_font_montserrat_12) {
     lv_obj_t* lbl = lv_label_create(parent);
     lv_label_set_text(lbl, text);
     lv_obj_set_pos(lbl, x, y);
@@ -179,14 +164,14 @@ void NeoLanguageApp::createTabBar() {
         _tabPills[i] = pill;
 
         // Centre the label text in the pill.
-        // Each char in stix_math_18 is ~7 px wide; pill width is (tw-4).
+        // Each char in lv_font_montserrat_12 is ~7 px wide; pill width is (tw-4).
         // Using 7 px/char as a reasonable estimate — exact centering would require
         // lv_txt_get_size() which is only available after full LVGL init.
         int charW = 7;
         int labelX = ((tw - 4) - static_cast<int>(strlen(titles[i])) * charW) / 2;
         _tabLabels[i] = makeLabel(pill, labelX, (TAB_H - 6 - 12) / 2,
                                    titles[i], COL_TAB_TXT_I,
-                                   &stix_math_18);
+                                   &lv_font_montserrat_12);
         lv_obj_set_style_text_align(_tabLabels[i], LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
     }
 }
@@ -766,7 +751,7 @@ void NeoLanguageApp::showPlot(const NeoPlotRequest& req) {
     lv_obj_set_size(_plotHintLabel, PLOT_W, PLOT_HINT_H);
     lv_label_set_text(_plotHintLabel, "Press any key to return");
     lv_obj_set_style_text_color(_plotHintLabel, lv_color_hex(COL_TAB_TXT_I), LV_PART_MAIN);
-    lv_obj_set_style_text_font(_plotHintLabel, &stix_math_18, LV_PART_MAIN);
+    lv_obj_set_style_text_font(_plotHintLabel, &lv_font_montserrat_10, LV_PART_MAIN);
     lv_obj_set_style_text_align(_plotHintLabel, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
 
     // ── Render the plot ──────────────────────────────────────────
@@ -955,4 +940,3 @@ void NeoLanguageApp::loadFromFlash() {
     free(buf);
 #endif
 }
-

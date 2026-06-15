@@ -28,7 +28,7 @@
 #include <vector>
 #include "display/DisplayDriver.h"
 #include "input/KeyMatrix.h"   // legacy — mantenido para compatibilidad
-#include "drivers/Keyboard.h"   // nuevo driver 5×10
+#include "drivers/Keyboard.h"   // legacy driver 6×8
 #include "math/Tokenizer.h"
 #include "math/Parser.h"
 #include "math/Evaluator.h"

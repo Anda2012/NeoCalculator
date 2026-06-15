@@ -76,7 +76,7 @@ static void replaceWordToken(std::string &text, const std::string &token, const 
 }
 
 static void applyDisplaySymbolMap(std::string &text) {
-  // Normalize common Giac textual operators into STIX-supported glyphs.
+  // Normalize common Giac textual operators into Montserrat-supported glyphs.
   replaceWordToken(text, "infinity", numos::mathsym::SYMB_INFINITY);
   replaceWordToken(text, "inf", numos::mathsym::SYMB_INFINITY);
   replaceWordToken(text, "oo", numos::mathsym::SYMB_INFINITY);

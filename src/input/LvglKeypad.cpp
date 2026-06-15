@@ -108,6 +108,7 @@ uint32_t LvglKeypad::toLvKey(KeyCode code) {
 
         // Confirmación / Cancelación
         case KeyCode::ENTER:  return LV_KEY_ENTER;
+        case KeyCode::EXE:    return LV_KEY_ENTER;
         case KeyCode::AC:     return LV_KEY_ESC;
         case KeyCode::DEL:    return LV_KEY_BACKSPACE;
 

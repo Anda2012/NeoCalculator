@@ -1,18 +1,3 @@
-/*
- * NeoCalculator - NumOS
- * Copyright (C) 2026 Juan Ramon
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
- */
-
 /**
  * SequencesApp.cpp — Sequences & Series application for NumOS.
  *
@@ -165,7 +150,7 @@ void SequencesApp::createTabBar() {
 
         _tabLabels[i] = lv_label_create(_tabBtns[i]);
         lv_label_set_text(_tabLabels[i], titles[i]);
-        lv_obj_set_style_text_font(_tabLabels[i], &stix_math_18, LV_PART_MAIN);
+        lv_obj_set_style_text_font(_tabLabels[i], &lv_font_montserrat_12, LV_PART_MAIN);
         lv_obj_center(_tabLabels[i]);
     }
 }
@@ -198,14 +183,14 @@ void SequencesApp::createDefineTab() {
         lv_label_set_text(_seqLabels[i], names[i]);
         lv_obj_set_pos(_seqLabels[i], 15, ry);
         lv_obj_set_style_text_color(_seqLabels[i], lv_color_hex(colors[i]), LV_PART_MAIN);
-        lv_obj_set_style_text_font(_seqLabels[i], &stix_math_18, LV_PART_MAIN);
+        lv_obj_set_style_text_font(_seqLabels[i], &lv_font_montserrat_14, LV_PART_MAIN);
 
         // Expression display
         _seqExprs[i] = lv_label_create(_definePanel);
         lv_label_set_text(_seqExprs[i], _seqExprText[i]);
         lv_obj_set_pos(_seqExprs[i], 85, ry);
         lv_obj_set_style_text_color(_seqExprs[i], lv_color_hex(COL_TEXT), LV_PART_MAIN);
-        lv_obj_set_style_text_font(_seqExprs[i], &stix_math_18, LV_PART_MAIN);
+        lv_obj_set_style_text_font(_seqExprs[i], &lv_font_montserrat_14, LV_PART_MAIN);
     }
 
     // Hint
@@ -213,7 +198,7 @@ void SequencesApp::createDefineTab() {
     lv_label_set_text(_defineHint, "ENTER to edit, LEFT/RIGHT to switch tab");
     lv_obj_set_pos(_defineHint, 15, panelH - 25);
     lv_obj_set_style_text_color(_defineHint, lv_color_hex(COL_HINT), LV_PART_MAIN);
-    lv_obj_set_style_text_font(_defineHint, &stix_math_18, LV_PART_MAIN);
+    lv_obj_set_style_text_font(_defineHint, &lv_font_montserrat_10, LV_PART_MAIN);
 }
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -474,4 +459,3 @@ void SequencesApp::handleKeyTable(const KeyEvent& ev) {
             break;
     }
 }
-

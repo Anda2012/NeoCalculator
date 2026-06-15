@@ -33,7 +33,7 @@ int  setting_decimal_precision = 10;
 bool setting_edu_steps = false;
 #include "display/DisplayDriver.h"
 #include "input/KeyMatrix.h"   // legacy driver — no instanciado; conservado por si acaso
-#include "drivers/Keyboard.h"  // nuevo driver 5×10
+#include "drivers/Keyboard.h"  // legacy driver 6×8
 #include "input/SerialBridge.h"
 #include "input/LvglKeypad.h"
 #include "SystemApp.h"
@@ -41,7 +41,7 @@ bool setting_edu_steps = false;
 
 #ifdef NUMOS_STIX_DIAGNOSTICS
 #include "ui/StixGlyphGallery.h"
-#include "fonts/StixMathFont.h"
+#include "fonts/MontserratMathFont.h"
 #endif
 
 // CAS tests (enable via -DCAS_RUN_TESTS in platformio.ini)
@@ -57,7 +57,7 @@ bool setting_edu_steps = false;
 #endif
 
 // ---- Objetos globales ----
-static Keyboard      g_keypad;           // driver 5×10 (Filas=OUTPUT, Cols=INPUT_PULLUP)
+static Keyboard      g_keypad;           // legacy driver 6×8
 static DisplayDriver g_display;
 static SystemApp     g_app(g_display, g_keypad);
 static SerialBridge  g_serial;
@@ -104,6 +104,10 @@ void setup() {
 
     // -- 2. TFT --
     g_display.begin();
+
+    // -- 2b. Physical keyboard scanner --
+    g_keypad.begin();
+    Serial.println("[KBD] Hardware keyboard scanner initialized");
 
     // -- 3. LVGL init --
     lv_init();
@@ -164,8 +168,8 @@ void setup() {
 
     #ifdef NUMOS_STIX_DIAGNOSTICS
     // -- 6b. STIX Two Math validation (glyph coverage + baseline check) --
-    const bool stixDiagOk = ui::runStixGlyphAlignmentDiagnostics(&stix_math_18);
-    Serial.printf("[STIX] Alignment diagnostics: %s\n", stixDiagOk ? "PASS" : "WARN");
+    const bool mathDiagOk = ui::runStixGlyphAlignmentDiagnostics(&lv_font_montserrat_math_14);
+    Serial.printf("[MATH] Alignment diagnostics: %s\n", mathDiagOk ? "PASS" : "WARN");
 
     // Show the required glyph gallery briefly on real hardware.
     ui::showStixGlyphGallery(1800);

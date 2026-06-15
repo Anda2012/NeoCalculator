@@ -1,18 +1,3 @@
-/*
- * NeoCalculator - NumOS
- * Copyright (C) 2026 Juan Ramon
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
- */
-
 /**
  * RegressionApp.cpp — Regression analysis application for NumOS.
  *
@@ -178,7 +163,7 @@ void RegressionApp::createTabBar() {
 
         _tabLabels[i] = lv_label_create(_tabBtns[i]);
         lv_label_set_text(_tabLabels[i], names[i]);
-        lv_obj_set_style_text_font(_tabLabels[i], &stix_math_18, LV_PART_MAIN);
+        lv_obj_set_style_text_font(_tabLabels[i], &lv_font_montserrat_12, LV_PART_MAIN);
         lv_obj_align(_tabLabels[i], LV_ALIGN_CENTER, 0, 0);
     }
 }
@@ -207,7 +192,7 @@ void RegressionApp::createDataTab() {
     lv_table_set_column_width(_table, 1, 150);
     lv_obj_set_size(_table, SCREEN_W - 8, panelH - 24);
     lv_obj_set_pos(_table, 4, 2);
-    lv_obj_set_style_text_font(_table, &stix_math_18, LV_PART_MAIN);
+    lv_obj_set_style_text_font(_table, &lv_font_montserrat_12, LV_PART_MAIN);
     lv_obj_set_style_border_width(_table, 1, LV_PART_MAIN);
     lv_obj_set_style_border_color(_table, lv_color_hex(0xD0D0D0), LV_PART_MAIN);
 
@@ -223,7 +208,7 @@ void RegressionApp::createDataTab() {
     _dataHint = lv_label_create(_dataPanel);
     lv_label_set_text(_dataHint,
         LV_SYMBOL_UP LV_SYMBOL_DOWN " Nav  ENTER Edit  AC New row");
-    lv_obj_set_style_text_font(_dataHint, &stix_math_18, LV_PART_MAIN);
+    lv_obj_set_style_text_font(_dataHint, &lv_font_montserrat_10, LV_PART_MAIN);
     lv_obj_set_style_text_color(_dataHint, lv_color_hex(COL_HINT), LV_PART_MAIN);
     lv_obj_set_pos(_dataHint, 6, panelH - 18);
 }
@@ -248,7 +233,7 @@ void RegressionApp::createEquationTab() {
     // Model label (toggle with SHIFT)
     _eqModelLabel = lv_label_create(_eqPanel);
     lv_label_set_text(_eqModelLabel, "Model: Linear  (SHIFT to toggle)");
-    lv_obj_set_style_text_font(_eqModelLabel, &stix_math_18, LV_PART_MAIN);
+    lv_obj_set_style_text_font(_eqModelLabel, &lv_font_montserrat_12, LV_PART_MAIN);
     lv_obj_set_style_text_color(_eqModelLabel, lv_color_hex(COL_HINT), LV_PART_MAIN);
     lv_obj_set_pos(_eqModelLabel, 8, 6);
 
@@ -268,14 +253,14 @@ void RegressionApp::createEquationTab() {
         // Name label (left)
         lv_obj_t* name = lv_label_create(_eqPanel);
         lv_label_set_text(name, names[i]);
-        lv_obj_set_style_text_font(name, &stix_math_18, LV_PART_MAIN);
+        lv_obj_set_style_text_font(name, &lv_font_montserrat_12, LV_PART_MAIN);
         lv_obj_set_style_text_color(name, lv_color_hex(COL_TEXT), LV_PART_MAIN);
         lv_obj_set_pos(name, 10, y);
 
         // Value label (right)
         _eqLabels[i] = lv_label_create(_eqPanel);
         lv_label_set_text(_eqLabels[i], "---");
-        lv_obj_set_style_text_font(_eqLabels[i], &stix_math_18, LV_PART_MAIN);
+        lv_obj_set_style_text_font(_eqLabels[i], &lv_font_montserrat_14, LV_PART_MAIN);
         lv_obj_set_style_text_color(_eqLabels[i], lv_color_hex(0x1565C0), LV_PART_MAIN);
         lv_obj_set_pos(_eqLabels[i], 150, y);
     }
@@ -866,4 +851,3 @@ void RegressionApp::handleKeyGraph(const KeyEvent& ev) {
         updateGraph();
     }
 }
-

@@ -20,7 +20,7 @@
 #include <array>
 
 #include "MathSymbols.h"
-#include "../fonts/StixMathFont.h"
+#include "../fonts/MontserratMathFont.h"
 
 namespace ui {
 namespace {
@@ -34,7 +34,7 @@ bool probeGlyph(const lv_font_t* font, uint32_t codepoint, const char* name, lv_
     lv_font_glyph_dsc_t glyph;
     const bool ok = lv_font_get_glyph_dsc(font, &glyph, codepoint, 0);
     if (ok) {
-        Serial.printf("[STIX] %-9s U+%04lX OK  adv=%d ofs_y=%d box=%dx%d\n",
+        Serial.printf("[MATH] %-9s U+%04lX OK  adv=%d ofs_y=%d box=%dx%d\n",
                       name,
                       static_cast<unsigned long>(codepoint),
                       static_cast<int>(glyph.adv_w),
@@ -45,7 +45,7 @@ bool probeGlyph(const lv_font_t* font, uint32_t codepoint, const char* name, lv_
             *out = glyph;
         }
     } else {
-        Serial.printf("[STIX] %-9s U+%04lX MISSING\n",
+        Serial.printf("[MATH] %-9s U+%04lX MISSING\n",
                       name,
                       static_cast<unsigned long>(codepoint));
     }
@@ -55,7 +55,7 @@ bool probeGlyph(const lv_font_t* font, uint32_t codepoint, const char* name, lv_
 } // namespace
 
 bool runStixGlyphAlignmentDiagnostics(const lv_font_t* font) {
-    const lv_font_t* target = font ? font : &stix_math_18;
+    const lv_font_t* target = font ? font : &lv_font_montserrat_math_14;
 
     const std::array<GlyphProbe, 14> probes = {{
         {0x222B, "SYMB_INT"},
@@ -102,13 +102,13 @@ bool runStixGlyphAlignmentDiagnostics(const lv_font_t* font) {
         // Delta <= 8 keeps visible baseline drift under control on 240px-high UI rows.
         baselineOk = delta <= 8;
 
-        Serial.printf("[STIX] Baseline delta(int,sum,sqrt)=%d -> %s\n",
+        Serial.printf("[MATH] Baseline delta(int,sum,sqrt)=%d -> %s\n",
                       delta,
                       baselineOk ? "OK" : "WARN");
     }
 
     const bool passed = allFound && alignDataOk && baselineOk;
-    Serial.printf("[STIX] Diagnostics: %s\n", passed ? "PASS" : "FAIL");
+    Serial.printf("[MATH] Diagnostics: %s\n", passed ? "PASS" : "FAIL");
     return passed;
 }
 
@@ -130,8 +130,8 @@ void showStixGlyphGallery(uint32_t holdMs) {
     lv_obj_clear_flag(panel, LV_OBJ_FLAG_SCROLLABLE);
 
     lv_obj_t* title = lv_label_create(panel);
-    lv_label_set_text(title, "STIX TWO MATH - GLYPH GALLERY");
-    lv_obj_set_style_text_font(title, &stix_math_18, LV_PART_MAIN);
+    lv_label_set_text(title, "MONTSERRAT MATH - GLYPH GALLERY");
+    lv_obj_set_style_text_font(title, &lv_font_montserrat_math_14, LV_PART_MAIN);
     lv_obj_set_style_text_color(title, lv_color_hex(0x111111), LV_PART_MAIN);
     lv_obj_set_pos(title, 8, 8);
 
@@ -148,7 +148,7 @@ void showStixGlyphGallery(uint32_t holdMs) {
     for (const char* sample : kSamples) {
         lv_obj_t* label = lv_label_create(panel);
         lv_label_set_text(label, sample);
-        lv_obj_set_style_text_font(label, &stix_math_18, LV_PART_MAIN);
+        lv_obj_set_style_text_font(label, &lv_font_montserrat_math_14, LV_PART_MAIN);
         lv_obj_set_style_text_color(label, lv_color_hex(0x202020), LV_PART_MAIN);
         lv_obj_set_pos(label, 12, y);
         y += 30;
@@ -157,7 +157,7 @@ void showStixGlyphGallery(uint32_t holdMs) {
     lv_obj_t* legend = lv_label_create(panel);
     lv_label_set_text(legend,
                       "SYMB_INT  SYMB_SUM  SYMB_SQRT  SYMB_REAL  SYMB_COMPLEX");
-    lv_obj_set_style_text_font(legend, &stix_math_18, LV_PART_MAIN);
+    lv_obj_set_style_text_font(legend, &lv_font_montserrat_math_14, LV_PART_MAIN);
     lv_obj_set_style_text_color(legend, lv_color_hex(0x3A3A3A), LV_PART_MAIN);
     lv_obj_set_style_text_letter_space(legend, 1, LV_PART_MAIN);
     lv_obj_set_pos(legend, 8, 218);

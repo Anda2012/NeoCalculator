@@ -1,18 +1,3 @@
-/*
- * NeoCalculator - NumOS
- * Copyright (C) 2026 Juan Ramon
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
- */
-
 /**
  * IntegralApp.h — Symbolic Integration App for NumOS.
  *
@@ -35,7 +20,7 @@
  *   - Dynamic input height adapting to expression content
  *   - PSRAM arena-based memory (no heap fragmentation)
  *
- * Part of: NumOS CAS — Phase 6B (Integration App & Final Polish)
+ * Part of: NumOS Pro-CAS — Phase 6B (Integration App & Final Polish)
  */
 
 #pragma once

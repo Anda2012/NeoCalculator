@@ -34,8 +34,8 @@
 #include "MathSymbols.h"
 #include "MathTypography.h"
 
-// Ajuste empírico para centrar la caja de STIX Two Math con la caja de los nodos VPAM
-#define STIX_Y_OFFSET -8
+// Ajuste empírico para centrar la caja de Montserrat Math con la caja de los nodos VPAM
+#define MATH_Y_OFFSET -8
 
 namespace vpam {
 
@@ -1575,7 +1575,7 @@ void MathCanvas::drawText(lv_layer_t* layer, int16_t x, int16_t yBaseline,
 
             lv_point_t letterPos;
             letterPos.x = static_cast<int32_t>(penX);
-            letterPos.y = static_cast<int32_t>(yBaseline) + STIX_Y_OFFSET + scriptAdjust;
+            letterPos.y = static_cast<int32_t>(yBaseline) + MATH_Y_OFFSET + scriptAdjust;
 
             lv_draw_letter(layer, &dsc, &letterPos);
             penX += glyph.adv_w;

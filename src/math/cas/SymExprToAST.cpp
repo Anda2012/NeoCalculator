@@ -500,7 +500,7 @@ NodePtr SymExprToAST::convertFunc(const SymFunc* f) {
             return row;
         }
         case SymFuncKind::Integral: {
-            // Integral f(x) dx with real integral glyph now that STIX is global.
+            // Integral f(x) dx with real integral glyph now that Montserrat Math is global.
             auto row = makeRow();
             auto* r = static_cast<NodeRow*>(row.get());
             r->appendChild(makeNumber(numos::mathsym::SYMB_INT));

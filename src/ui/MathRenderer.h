@@ -119,10 +119,10 @@ public:
     /** Objeto LVGL subyacente */
     lv_obj_t* obj() const { return _obj; }
 
-    /** FontMetrics para la fuente normal (STIX Two Math 18) */
+    /** FontMetrics para la fuente normal (Montserrat Math 14) */
     const FontMetrics& normalMetrics() const { return _fmNormal; }
 
-    /** FontMetrics para la fuente secundaria/superscript (STIX Two Math 12) */
+    /** FontMetrics para la fuente secundaria/superscript (Montserrat Math 12) */
     const FontMetrics& smallMetrics() const { return _fmSmall; }
 
     /**
@@ -149,8 +149,8 @@ private:
     const CursorController* _cursorCtrl;
 
     // Fuentes LVGL
-    const lv_font_t*  _fontNormal;     // STIX Two Math 18
-    const lv_font_t*  _fontSmall;      // STIX Two Math 12 (super/subscript)
+    const lv_font_t*  _fontNormal;     // Montserrat Math 14
+    const lv_font_t*  _fontSmall;      // Montserrat Math 12 (super/subscript)
     FontMetrics        _fmNormal;
     FontMetrics        _fmSmall;
 

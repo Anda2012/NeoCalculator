@@ -1,21 +1,6 @@
-/*
- * NeoCalculator - NumOS
- * Copyright (C) 2026 Juan Ramon
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
- */
-
 /**
  * NeuralLabApp.cpp
- * Visual Neural Network Playground for NumOS — "Neural Lab"
+ * Visual Neural Network Playground for NumOS — "Neural Lab Elite"
  * App ID 16 — LVGL-native, decision boundary visualization.
  *
  * Cyberpunk-themed UI with bilinear-interpolated decision boundary,
@@ -184,7 +169,7 @@ void NeuralLabApp::end() {
 
 void NeuralLabApp::load() {
     if (!_screen) begin();
-    _statusBar.setTitle("Neural Lab");
+    _statusBar.setTitle("Neural Lab Elite");
     _statusBar.update();
     lv_screen_load_anim(_screen, LV_SCREEN_LOAD_ANIM_FADE_IN, 200, 0, false);
 }
@@ -204,14 +189,14 @@ void NeuralLabApp::createUI() {
     // ── Info label at bottom ──
     _infoLabel = lv_label_create(_screen);
     lv_obj_set_style_text_color(_infoLabel, lv_color_hex(COL_ACCENT), 0);
-    lv_obj_set_style_text_font(_infoLabel, &stix_math_18, 0);
+    lv_obj_set_style_text_font(_infoLabel, &lv_font_montserrat_10, 0);
     lv_obj_align(_infoLabel, LV_ALIGN_BOTTOM_LEFT, 4, -2);
-    lv_label_set_text(_infoLabel, "Neural Lab | F2:Train F4:Scenario");
+    lv_label_set_text(_infoLabel, "Neural Lab Elite | F2:Train F4:Scenario");
 
     // ── Topology HUD label (top-left overlay) ──
     _hudLabel = lv_label_create(_screen);
     lv_obj_set_style_text_color(_hudLabel, lv_color_hex(COL_ACCENT), 0);
-    lv_obj_set_style_text_font(_hudLabel, &stix_math_18, 0);
+    lv_obj_set_style_text_font(_hudLabel, &lv_font_montserrat_10, 0);
     lv_obj_set_style_bg_color(_hudLabel, lv_color_hex(COL_HUD_BG), 0);
     lv_obj_set_style_bg_opa(_hudLabel, LV_OPA_70, 0);
     lv_obj_set_style_pad_all(_hudLabel, 3, 0);
@@ -1187,4 +1172,3 @@ void NeuralLabApp::handleKey(const KeyEvent& ev) {
         _enterHandled = false;
     }
 }
-

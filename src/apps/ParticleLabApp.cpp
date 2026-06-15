@@ -1,18 +1,3 @@
-/*
- * NeoCalculator - NumOS
- * Copyright (C) 2026 Juan Ramon
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
- */
-
 /**
  * ParticleLabApp.cpp
  * Falling-sand particle simulation — LVGL integration, rendering, input.
@@ -195,7 +180,7 @@ void ParticleLabApp::createUI() {
     // Info label
     _infoLabel = lv_label_create(_screen);
     lv_obj_set_pos(_infoLabel, 4, SCREEN_H - INFO_H - 2);
-    lv_obj_set_style_text_font(_infoLabel, &stix_math_18, LV_PART_MAIN);
+    lv_obj_set_style_text_font(_infoLabel, &lv_font_montserrat_10, LV_PART_MAIN);
     lv_obj_set_style_text_color(_infoLabel, lv_color_hex(COL_TEXT_DIM), LV_PART_MAIN);
     updateInfoLabel();
 
@@ -773,4 +758,3 @@ void ParticleLabApp::onSimTimer(lv_timer_t* timer) {
     // Trigger redraw
     if (app->_drawObj) lv_obj_invalidate(app->_drawObj);
 }
-

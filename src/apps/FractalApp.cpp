@@ -1,18 +1,3 @@
-/*
- * NeoCalculator - NumOS
- * Copyright (C) 2026 Juan Ramon
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
- */
-
 #include "FractalApp.h"
 
 #include <cstring>
@@ -400,12 +385,12 @@ void FractalApp::buildAtlasLauncher() {
         lv_obj_t* title = lv_label_create(card);
         lv_label_set_text(title, kModules[i].title);
         lv_obj_set_style_text_color(title, lv_color_hex(0xE6EDF3), LV_PART_MAIN);
-        lv_obj_set_style_text_font(title, &stix_math_18, LV_PART_MAIN);
+        lv_obj_set_style_text_font(title, &lv_font_montserrat_14, LV_PART_MAIN);
 
         lv_obj_t* badge = lv_label_create(card);
         lv_label_set_text(badge, kModules[i].badge);
         lv_obj_set_style_text_color(badge, lv_color_hex(0x7D8590), LV_PART_MAIN);
-        lv_obj_set_style_text_font(badge, &stix_math_18, LV_PART_MAIN);
+        lv_obj_set_style_text_font(badge, &lv_font_montserrat_10, LV_PART_MAIN);
     }
 
     updateAtlasSelection();
@@ -957,4 +942,3 @@ void FractalApp::renderTaskWrapper(void* param) {
     vTaskDelete(nullptr);
 #endif
 }
-

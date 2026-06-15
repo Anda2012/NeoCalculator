@@ -141,7 +141,7 @@
  *====================*/
 
 /*
- * STIX Two Math (custom LVGL font) disponible para zonas matematicas.
+ * Montserrat Math (custom LVGL font) disponible para zonas matematicas.
  * Se mantiene declarado aqui para los modulos que lo usan de forma selectiva.
  */
 #ifndef __ASSEMBLY__
@@ -150,8 +150,8 @@ extern "C" {
 #endif
 struct _lv_font_t;
 typedef struct _lv_font_t lv_font_t;
-extern const lv_font_t stix_math_18;
-extern const lv_font_t stix_math_12;
+extern const lv_font_t lv_font_montserrat_math_14;
+extern const lv_font_t lv_font_montserrat_math_12;
 #ifdef __cplusplus
 }
 #endif
@@ -168,7 +168,7 @@ extern const lv_font_t stix_math_12;
 #define LV_FONT_UNSCII_8        1
 #define LV_FONT_MONTSERRAT_22   0
 #define LV_FONT_MONTSERRAT_24   0
-#define LV_FONT_MONTSERRAT_28   0
+#define LV_FONT_MONTSERRAT_28   1
 #define LV_FONT_MONTSERRAT_32   0
 #define LV_FONT_MONTSERRAT_36   0
 #define LV_FONT_MONTSERRAT_48   0

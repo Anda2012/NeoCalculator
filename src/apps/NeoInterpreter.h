@@ -1,18 +1,3 @@
-/*
- * NeoCalculator - NumOS
- * Copyright (C) 2026 Juan Ramon
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
- */
-
 /**
  * NeoInterpreter.h — AST evaluation engine for NeoLanguage.
  *
@@ -31,7 +16,7 @@
  *   Undefined variables do NOT cause errors.  They are returned as
  *   Symbolic NeoValues wrapping a cas::SymExpr* (SymVar node).
  *   Any arithmetic involving a Symbolic value escalates the result to
- *   Symbolic using the CAS factories (symAdd, symMul, etc.).
+ *   Symbolic using the Pro-CAS factories (symAdd, symMul, etc.).
  *
  * Return propagation:
  *   Because ESP32 projects typically disable C++ exceptions,

@@ -158,7 +158,7 @@ struct FontMetrics {
     }
 };
 
-/// Métricas por defecto razonables (≈ STIX Two Math 18 a ~10 px de ancho).
+/// Métricas por defecto razonables (≈ Montserrat Math 14 a ~10 px de ancho).
 inline FontMetrics defaultFontMetrics() {
     return { 10, 14, 3, 0, nullptr };
 }

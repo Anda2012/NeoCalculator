@@ -1,18 +1,3 @@
-/*
- * NeoCalculator - NumOS
- * Copyright (C) 2026 Juan Ramon
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
- */
-
 /**
  * CalculationApp.cpp — Calculadora V.P.A.M. con LVGL 9.5
  *
@@ -36,7 +21,6 @@
 #include "../math/cas/ASTFlattener.h"
 #include "../math/cas/SymSimplify.h"
 #include "../math/cas/SymExprToAST.h"
-#include "../ui/MathTypography.h"
 #ifdef NATIVE_SIM
   #include <cstdio>
 #endif
@@ -51,7 +35,7 @@ static constexpr int SCREEN_H    = 240;
 static constexpr int BAR_H       = ui::StatusBar::HEIGHT + 1;  // 24 + 1 separador
 static constexpr int PAD          = 6;     // Margen de seguridad en todos los bordes
 static constexpr int CANVAS_Y    = BAR_H;
-static constexpr int EXPR_H      = 98;     // Altura zona expresión
+static constexpr int EXPR_H      = 150;     // Altura zona expresión
 static constexpr int SEP_Y       = CANVAS_Y + EXPR_H;
 static constexpr int RESULT_Y    = SEP_Y + 1;
 static constexpr int RESULT_H    = SCREEN_H - RESULT_Y;
@@ -137,8 +121,6 @@ void CalculationApp::load() {
 // ════════════════════════════════════════════════════════════════════════════
 
 void CalculationApp::createUI() {
-    ui::initMathTypography();
-
     // ── Pantalla ──
     _screen = lv_obj_create(NULL);
     lv_obj_set_style_bg_color(_screen, lv_color_hex(COL_BG_HEX), LV_PART_MAIN);
@@ -152,9 +134,8 @@ void CalculationApp::createUI() {
 
     // ── MathCanvas — Expresión (zona superior, con padding lateral) ──
     _mathCanvas.create(_screen);
-    lv_obj_set_pos(_mathCanvas.obj(), PAD, CANVAS_Y);
-    lv_obj_set_size(_mathCanvas.obj(), SCREEN_W - 2 * PAD, EXPR_H);
-    lv_obj_add_style(_mathCanvas.obj(), &ui::style_math_primary, LV_PART_MAIN);
+    lv_obj_set_pos(_mathCanvas.obj(), PAD, CANVAS_Y + 30);
+    lv_obj_set_size(_mathCanvas.obj(), SCREEN_W - 2 * PAD, EXPR_H + 30);
 
     // ── Línea separadora expr↔resultado (#333) ──
     _resultSep = lv_obj_create(_screen);
@@ -173,7 +154,6 @@ void CalculationApp::createUI() {
     _resultCanvas.create(_screen);
     lv_obj_set_pos(_resultCanvas.obj(), PAD, RESULT_Y);
     lv_obj_set_size(_resultCanvas.obj(), SCREEN_W - 2 * PAD, RESULT_H - PAD);
-    lv_obj_add_style(_resultCanvas.obj(), &ui::style_math_primary, LV_PART_MAIN);
     // Ocultar canvas de resultado hasta que se evalúe
     lv_obj_add_flag(_resultCanvas.obj(), LV_OBJ_FLAG_HIDDEN);
 }
@@ -845,7 +825,6 @@ void CalculationApp::openStepViewer() {
     lv_obj_set_style_pad_row(_stepsContainer, 4, LV_PART_MAIN);
     lv_obj_add_flag(_stepsContainer, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_set_scroll_dir(_stepsContainer, LV_DIR_VER);
-    lv_obj_add_style(_stepsContainer, &ui::style_math_primary, LV_PART_MAIN);
 
     buildStepsDisplay();
     lv_obj_scroll_to_y(_stepsContainer, 0, LV_ANIM_OFF);
@@ -897,7 +876,7 @@ void CalculationApp::buildStepsDisplay() {
     if (steps.empty()) {
         lv_obj_t* lbl = lv_label_create(_stepsContainer);
         lv_label_set_text(lbl, "No steps available.");
-        lv_obj_add_style(lbl, &ui::style_math_primary, LV_PART_MAIN);
+        lv_obj_set_style_text_font(lbl, &lv_font_montserrat_14, LV_PART_MAIN);
         lv_obj_set_style_text_color(lbl, lv_color_hex(0x808080), LV_PART_MAIN);
         return;
     }
@@ -939,7 +918,7 @@ void CalculationApp::buildStepsDisplay() {
             lv_label_set_text(descLbl, buf);
             lv_obj_set_width(descLbl, SCREEN_W - 2 * PAD - 8);
             lv_label_set_long_mode(descLbl, LV_LABEL_LONG_WRAP);
-            lv_obj_add_style(descLbl, &ui::style_math_primary, LV_PART_MAIN);
+            lv_obj_set_style_text_font(descLbl, &lv_font_montserrat_12, LV_PART_MAIN);
             lv_obj_set_style_text_color(descLbl, lv_color_hex(0x1A1A1A), LV_PART_MAIN);
         }
 
@@ -950,7 +929,7 @@ void CalculationApp::buildStepsDisplay() {
             snprintf(reasonBuf, sizeof(reasonBuf), "  " LV_SYMBOL_RIGHT " %s",
                      step.reason.c_str());
             lv_label_set_text(reasonLbl, reasonBuf);
-            lv_obj_add_style(reasonLbl, &ui::style_math_primary, LV_PART_MAIN);
+            lv_obj_set_style_text_font(reasonLbl, &lv_font_montserrat_12, LV_PART_MAIN);
             lv_obj_set_style_text_color(reasonLbl, lv_color_hex(0x4A90D9), LV_PART_MAIN);
         }
 
@@ -965,6 +944,6 @@ void CalculationApp::buildStepsDisplay() {
     lv_obj_t* hintLbl = lv_label_create(_stepsContainer);
     lv_label_set_text(hintLbl,
                       LV_SYMBOL_UP LV_SYMBOL_DOWN " Scroll    F2/AC: Back");
-    lv_obj_add_style(hintLbl, &ui::style_math_primary, LV_PART_MAIN);
+    lv_obj_set_style_text_font(hintLbl, &lv_font_montserrat_12, LV_PART_MAIN);
     lv_obj_set_style_text_color(hintLbl, lv_color_hex(0x808080), LV_PART_MAIN);
 }

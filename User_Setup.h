@@ -27,7 +27,7 @@
 
 // Pixel order / inversion
 #define TFT_RGB_ORDER TFT_BGR
-// #define TFT_INVERSION_ON
+#define TFT_INVERSION_OFF
 
 // ESP32-S3: force FSPI port to avoid REG_SPI_BASE(0)==0 crash
 #define USE_FSPI_PORT
