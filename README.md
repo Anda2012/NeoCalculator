@@ -32,8 +32,9 @@
 </div>
 
 > [!IMPORTANT]  
-> **Technical Status: Major Architectural Refactor**  
-> We are currently migrating the core math engine to **Giac** and implementing **STIX Two Math** for LaTeX-quality rendering. If you are compiling from `main`, you might experience UI glitches. For a stable experience, please check the [Releases](https://github.com/El-EnderJ/NeoCalculator/releases) section.
+> **Main Problem**  
+> Calculation app text input area broken 
+> ![Calculator Screenshot](Pictures/Calc_app.jpg "App Claculation Broken")
 
 <br>
 
@@ -310,6 +311,12 @@ build_src_filter = +<*> +<../tests/CASTest.cpp>
 |  --   | - |   --   | COL 6 | 48 | INPUT_PULLUP |
 |  --   | - |   --   | COL 7 | 21 | INPUT_PULLUP |
 
+## Example 6x8 hardware deifined Layout
+
+![Calculator Screenshot](Pictures/Keyboard_Wiring.jpg "Example 6x8 hardware deifined Layout")
+
+## Example wired 6x8 keyboard
+![Calculator Screenshot](Pictures/Physical_Keyboard.jpg "Example 6x8 hardware deifined Layout")
 
 ## Quick Start
 
