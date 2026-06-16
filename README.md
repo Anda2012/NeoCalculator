@@ -180,7 +180,7 @@ flowchart TB
    math --> procas
 
    display["Display Layer: DisplayDriver · LVGL flush DMA · ILI9341 @ 10 MHz"]
-   input["Input Layer: KeyMatrix 5x10 · SerialBridge · LvglKeypad · LittleFS"]
+   input["Input Layer: KeyMatrix 6x8 · SerialBridge · LvglKeypad · LittleFS"]
 
    system --> display
    system --> input
